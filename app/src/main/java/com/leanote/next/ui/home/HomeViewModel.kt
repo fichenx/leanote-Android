@@ -60,8 +60,12 @@ class HomeViewModel @Inject constructor(
     @ApplicationContext private val appContext: android.content.Context,
 ) : ViewModel() {
 
-    private val accountFlow = accountStore.activeAccount
-        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    /** resolved=false 表示账户存储还没读出首个结果，此时 account=null 是「未知」而非「未登录」。 */
+    private data class AccountSession(val account: Account? = null, val resolved: Boolean = false)
+
+    private val session = accountStore.activeAccount
+        .map { AccountSession(it, resolved = true) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, AccountSession())
 
     private val accountsFlow = accountStore.accounts
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -75,11 +79,12 @@ class HomeViewModel @Inject constructor(
     val messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val createdNote = MutableSharedFlow<Long>(extraBufferCapacity = 1)
 
-    private val notebooksFlow = accountFlow.flatMapLatest { account ->
+    private val notebooksFlow = session.flatMapLatest { s ->
+        val account = s.account
         if (account == null) flowOf(emptyList()) else notebookRepository.observe(account.id)
     }
 
-    private val rawNotesFlow = combine(accountFlow, filter) { account, f -> account to f }
+    private val rawNotesFlow = combine(session, filter) { s, f -> s.account to f }
         .flatMapLatest { (account, f) ->
             if (account == null) flowOf(emptyList())
             else noteRepository.observeNotes(account.id, f.notebookServerId ?: "", f.trash)
@@ -99,7 +104,8 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private val tagsFlow = accountFlow.flatMapLatest { account ->
+    private val tagsFlow = session.flatMapLatest { s ->
+        val account = s.account
         if (account == null) flowOf(emptyList())
         else noteRepository.observeTagRows(account.id).map { rows ->
             rows.flatMap { it.split(',') }
@@ -111,15 +117,15 @@ class HomeViewModel @Inject constructor(
     }
 
     private val baseState = combine(
-        accountFlow,
+        session,
         accountsFlow,
         notebooksFlow,
         notesFlow,
         tagsFlow,
-    ) { account, accounts, notebooks, notes, tags ->
+    ) { s, accounts, notebooks, notes, tags ->
         HomeUiState(
-            loading = false,
-            account = account,
+            loading = !s.resolved,
+            account = s.account,
             accounts = accounts,
             notebooks = notebooks,
             notes = notes,
@@ -188,7 +194,7 @@ class HomeViewModel @Inject constructor(
 
     fun createNote(markdown: Boolean) {
         viewModelScope.launch {
-            val account = accountFlow.value
+            val account = session.value.account
             if (account == null) {
                 messages.emit("请先登录")
                 return@launch
@@ -217,7 +223,7 @@ class HomeViewModel @Inject constructor(
 
     fun createNotebook(title: String) {
         viewModelScope.launch {
-            val account = accountFlow.value ?: return@launch
+            val account = session.value.account ?: return@launch
             runCatching { notebookRepository.create(account, title.trim()) }
                 .onSuccess { messages.emit("已创建笔记本「${it.title}」") }
                 .onFailure { messages.emit(it.message ?: "创建笔记本失败") }
@@ -226,7 +232,7 @@ class HomeViewModel @Inject constructor(
 
     fun renameNotebook(notebook: NotebookEntity, newTitle: String) {
         viewModelScope.launch {
-            val account = accountFlow.value ?: return@launch
+            val account = session.value.account ?: return@launch
             runCatching { notebookRepository.rename(account, notebook, newTitle.trim()) }
                 .onSuccess { messages.emit("已重命名") }
                 .onFailure { messages.emit(it.message ?: "重命名失败") }
@@ -235,7 +241,7 @@ class HomeViewModel @Inject constructor(
 
     fun deleteNotebook(notebook: NotebookEntity) {
         viewModelScope.launch {
-            val account = accountFlow.value ?: return@launch
+            val account = session.value.account ?: return@launch
             runCatching { notebookRepository.delete(account, notebook) }
                 .onSuccess {
                     if (filter.value.notebookServerId == notebook.serverId) showAll()
@@ -249,7 +255,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             noteRepository.setTrash(note.localId, true)
             messages.emit("已移至回收站")
-            runCatching { noteRepository.push(note.localId, accountFlow.value ?: return@launch) }
+            runCatching { noteRepository.push(note.localId, session.value.account ?: return@launch) }
         }
     }
 
@@ -257,13 +263,13 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             noteRepository.setTrash(note.localId, false)
             messages.emit("已恢复笔记")
-            runCatching { noteRepository.push(note.localId, accountFlow.value ?: return@launch) }
+            runCatching { noteRepository.push(note.localId, session.value.account ?: return@launch) }
         }
     }
 
     fun deleteForever(note: NoteEntity) {
         viewModelScope.launch {
-            val account = accountFlow.value ?: return@launch
+            val account = session.value.account ?: return@launch
             runCatching { noteRepository.deleteForever(account, note) }
                 .onSuccess { messages.emit("已永久删除") }
                 .onFailure { messages.emit(it.message ?: "删除失败") }
