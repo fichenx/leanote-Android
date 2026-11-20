@@ -51,6 +51,7 @@ data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val palette: ThemePalette = ThemePalette.FOREST,
     val dynamicColor: Boolean = false,
+    val customColors: Map<String, String> = emptyMap(),
     val autoSync: Boolean = true,
     val sortMode: SortMode = SortMode.UPDATED_DESC,
     val defaultMarkdown: Boolean = true,

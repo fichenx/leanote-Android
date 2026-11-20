@@ -27,7 +27,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.DriveFileMove
+import androidx.compose.material.icons.outlined.IosShare
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Sort
 import androidx.compose.material.icons.outlined.StickyNote2
 import androidx.compose.material.icons.outlined.TextSnippet
@@ -120,6 +123,16 @@ fun HomeScreen(
     var deleteNoteTarget by remember { mutableStateOf<NoteEntity?>(null) }
     var sortMenu by remember { mutableStateOf(false) }
     var moreMenu by remember { mutableStateOf(false) }
+    var showMoveDialog by remember { mutableStateOf(false) }
+    var showExportDialog by remember { mutableStateOf(false) }
+    var showBulkDelete by remember { mutableStateOf(false) }
+    var exportFormat by remember { mutableStateOf(com.leanote.next.data.transfer.ExportFormat.MARKDOWN) }
+
+    val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        if (uri != null) viewModel.exportSelected(uri, exportFormat)
+    }
 
     LaunchedEffect(Unit) {
         launch { viewModel.messages.collect { snackbar.showSnackbar(it) } }
@@ -197,9 +210,23 @@ fun HomeScreen(
                 Column {
                     TopAppBar(
                         title = {
+                            if (state.selectionMode) {
+                                Column {
+                                    Text(
+                                        "已选 ${state.selectedIds.size} 项",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Text(
+                                        "可移动、导出或删除所选笔记",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            } else {
                             Column {
                                 Text(
-                                    "Leanote",
+                                    "蚂蚁笔记",
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
                                 )
@@ -214,13 +241,38 @@ fun HomeScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
+                            }
                         },
                         navigationIcon = {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(Icons.Rounded.Menu, contentDescription = "打开侧边栏")
+                            IconButton(onClick = {
+                                if (state.selectionMode) viewModel.clearSelection()
+                                else scope.launch { drawerState.open() }
+                            }) {
+                                Icon(
+                                    if (state.selectionMode) Icons.Rounded.Close else Icons.Rounded.Menu,
+                                    contentDescription = if (state.selectionMode) "退出多选" else "打开侧边栏",
+                                )
                             }
                         },
                         actions = {
+                            if (state.selectionMode) {
+                                IconButton(onClick = { viewModel.selectAllVisible() }) {
+                                    Icon(Icons.Outlined.SelectAll, contentDescription = "全选/取消全选")
+                                }
+                                IconButton(onClick = { showMoveDialog = true }) {
+                                    Icon(Icons.Outlined.DriveFileMove, contentDescription = "移动到其他笔记本")
+                                }
+                                IconButton(onClick = { showExportDialog = true }, enabled = !state.exporting) {
+                                    Icon(Icons.Outlined.IosShare, contentDescription = "导出所选笔记")
+                                }
+                                IconButton(onClick = { showBulkDelete = true }) {
+                                    Icon(
+                                        Icons.Outlined.DeleteOutline,
+                                        contentDescription = "删除所选笔记",
+                                        tint = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            } else {
                             state.account?.let { account ->
                                 IconButton(onClick = { showAccountSheet = true }) {
                                     AccountAvatar(account, size = 30.dp)
@@ -273,6 +325,7 @@ fun HomeScreen(
                                     )
                                 }
                             }
+                            }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
                             containerColor = MaterialTheme.colorScheme.background,
@@ -294,7 +347,7 @@ fun HomeScreen(
                 }
             },
             floatingActionButton = {
-                if (!state.filter.trash) {
+                if (!state.filter.trash && !state.selectionMode) {
                     ExtendedFloatingActionButton(
                         onClick = { showNewSheet = true },
                         icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
@@ -380,6 +433,9 @@ fun HomeScreen(
                                         note = note,
                                         notebookName = state.notebookName(note.notebookServerId),
                                         account = state.account,
+                                        selected = note.localId in state.selectedIds,
+                                        selectionMode = state.selectionMode,
+                                        onToggleSelect = { viewModel.toggleSelect(note.localId) },
                                         onClick = { onOpenNote(note.localId) },
                                         onEdit = { onEditNote(note.localId) },
                                         onTrash = { viewModel.moveToTrash(note) },
@@ -587,6 +643,94 @@ fun HomeScreen(
                 deleteNoteTarget = null
             },
             onDismiss = { deleteNoteTarget = null },
+        )
+    }
+
+    if (showMoveDialog) {
+        AlertDialog(
+            onDismissRequest = { showMoveDialog = false },
+            title = { Text("移动 ${state.selectedIds.size} 条笔记到") },
+            text = {
+                LazyColumn {
+                    items(state.notebooks) { notebook ->
+                        ListItem(
+                            headlineContent = { Text(notebook.title) },
+                            supportingContent = if (notebook.serverId == state.filter.notebookServerId) {
+                                { Text("当前笔记本") }
+                            } else null,
+                            colors = ListItemDefaults.colors(
+                                containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                            ),
+                            modifier = Modifier.clickable {
+                                showMoveDialog = false
+                                viewModel.moveSelected(notebook.serverId)
+                            },
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showMoveDialog = false }) { Text("取消") }
+            },
+        )
+    }
+
+    if (showExportDialog) {
+        AlertDialog(
+            onDismissRequest = { showExportDialog = false },
+            title = { Text("导出 ${state.selectedIds.size} 条笔记") },
+            text = {
+                Column {
+                    com.leanote.next.data.transfer.ExportFormat.entries.forEach { format ->
+                        ListItem(
+                            headlineContent = { Text(format.label) },
+                            supportingContent = {
+                                Text(
+                                    when (format) {
+                                        com.leanote.next.data.transfer.ExportFormat.MARKDOWN -> "每篇笔记一个 .md 文件，富文本导出为 .html"
+                                        com.leanote.next.data.transfer.ExportFormat.HTML -> "每篇笔记一个独立网页，可用浏览器打开"
+                                        com.leanote.next.data.transfer.ExportFormat.ENEX -> "合并为一个 .enex，可导入 Evernote / 桌面版"
+                                    },
+                                )
+                            },
+                            leadingContent = {
+                                if (exportFormat == format) {
+                                    Icon(Icons.Outlined.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                }
+                            },
+                            colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
+                            modifier = Modifier.clickable { exportFormat = format },
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showExportDialog = false
+                    exportLauncher.launch(null)
+                }) { Text("选择目录并导出") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExportDialog = false }) { Text("取消") }
+            },
+        )
+    }
+
+    if (showBulkDelete) {
+        ConfirmDialog(
+            title = if (state.filter.trash) "永久删除所选笔记？" else "删除所选笔记？",
+            text = if (state.filter.trash) {
+                "将永久删除 ${state.selectedIds.size} 条笔记，无法恢复。"
+            } else {
+                "将 ${state.selectedIds.size} 条笔记移至回收站，并同步到服务器。"
+            },
+            confirmText = if (state.filter.trash) "永久删除" else "移至回收站",
+            destructive = true,
+            onConfirm = {
+                showBulkDelete = false
+                viewModel.deleteSelected()
+            },
+            onDismiss = { showBulkDelete = false },
         )
     }
 }

@@ -6,6 +6,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
+import java.net.URLEncoder
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -52,6 +53,13 @@ class ApiClient @Inject constructor() {
         val base = normalizeHost(host)
         val suffix = if (token.isNullOrBlank()) "" else "&token=$token"
         return "$base/api/file/getImage?fileId=$fileId$suffix"
+    }
+
+    fun attachmentUrl(host: String, attachId: String, token: String): String {
+        val base = normalizeHost(host)
+        val encodedId = URLEncoder.encode(attachId, "UTF-8")
+        val encodedToken = URLEncoder.encode(token, "UTF-8")
+        return "$base/api/file/getAttach?fileId=$encodedId&token=$encodedToken"
     }
 
     companion object {

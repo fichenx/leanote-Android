@@ -98,6 +98,19 @@ class NoteRepository @Inject constructor(
         noteDao.setTrash(localId, trash, System.currentTimeMillis())
     }
 
+    /** 批量移动到其他笔记本，标记为待同步。 */
+    suspend fun moveToNotebook(localId: Long, notebookServerId: String) = withContext(Dispatchers.IO) {
+        val note = noteDao.getById(localId) ?: return@withContext
+        if (note.notebookServerId == notebookServerId) return@withContext
+        noteDao.upsert(
+            note.copy(
+                notebookServerId = notebookServerId,
+                isDirty = true,
+                updatedTime = System.currentTimeMillis(),
+            )
+        )
+    }
+
     suspend fun deleteForever(account: Account, note: NoteEntity) = withContext(Dispatchers.IO) {
         if (note.serverId.isNotBlank()) {
             val response = runCatching {

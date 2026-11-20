@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.rounded.ArrowBack
@@ -88,6 +89,7 @@ fun NoteDetailScreen(
     val scope = rememberCoroutineScope()
     var moreMenu by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var showAttachments by remember { mutableStateOf(false) }
     var fitToWidth by rememberSaveable { mutableStateOf(true) }
 
     val imageRepository = remember(context) {
@@ -151,6 +153,14 @@ fun NoteDetailScreen(
                             Icon(Icons.Rounded.MoreVert, contentDescription = "更多")
                         }
                         DropdownMenu(expanded = moreMenu, onDismissRequest = { moreMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("附件") },
+                                leadingIcon = { Icon(Icons.Outlined.AttachFile, contentDescription = null) },
+                                onClick = {
+                                    moreMenu = false
+                                    showAttachments = true
+                                },
+                            )
                             viewModel.blogUrl()?.let { url ->
                                 DropdownMenuItem(
                                     text = { Text("在博客中查看") },
@@ -240,6 +250,16 @@ fun NoteDetailScreen(
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize(),
+            )
+        }
+    }
+
+    if (showAttachments) {
+        state.note?.let { note ->
+            AttachmentsSheet(
+                note = note,
+                account = state.account,
+                onDismiss = { showAttachments = false },
             )
         }
     }

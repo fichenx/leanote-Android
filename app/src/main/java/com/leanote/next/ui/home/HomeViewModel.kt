@@ -42,7 +42,11 @@ data class HomeUiState(
     val sortMode: SortMode = SortMode.UPDATED_DESC,
     val defaultMarkdown: Boolean = true,
     val syncing: Boolean = false,
+    val selectedIds: Set<Long> = emptySet(),
+    val exporting: Boolean = false,
 ) {
+    val selectionMode: Boolean get() = selectedIds.isNotEmpty()
+
     val currentNotebook: NotebookEntity?
         get() = notebooks.firstOrNull { it.serverId == filter.notebookServerId }
 
@@ -59,6 +63,7 @@ class HomeViewModel @Inject constructor(
     private val settingsStore: SettingsStore,
     private val syncEngine: SyncEngine,
     private val authRepository: AuthRepository,
+    private val noteTransfer: com.leanote.next.data.transfer.NoteTransfer,
     @ApplicationContext private val appContext: android.content.Context,
 ) : ViewModel() {
 
@@ -77,6 +82,8 @@ class HomeViewModel @Inject constructor(
 
     private val filter = MutableStateFlow(NoteFilter())
     private val syncing = MutableStateFlow(false)
+    private val selection = MutableStateFlow<Set<Long>>(emptySet())
+    private val exporting = MutableStateFlow(false)
 
     val messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val createdNote = MutableSharedFlow<Long>(extraBufferCapacity = 1)
@@ -148,8 +155,12 @@ class HomeViewModel @Inject constructor(
         )
     }
 
-    val uiState = combine(withSettings, syncing) { state, isSyncing ->
-        state.copy(syncing = isSyncing)
+    val uiState = combine(withSettings, syncing, selection, exporting) { state, isSyncing, selected, isExporting ->
+        state.copy(
+            syncing = isSyncing,
+            selectedIds = selected.filter { id -> state.notes.any { it.localId == id } }.toSet(),
+            exporting = isExporting,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     fun selectNotebook(serverId: String?) = filter.update {
@@ -163,6 +174,72 @@ class HomeViewModel @Inject constructor(
     fun showTrash() = filter.update { NoteFilter(trash = true) }
 
     fun showAll() = filter.update { NoteFilter() }
+
+    // ---- 多选 ----
+
+    fun toggleSelect(localId: Long) = selection.update { ids ->
+        if (localId in ids) ids - localId else ids + localId
+    }
+
+    fun clearSelection() { selection.value = emptySet() }
+
+    fun selectAllVisible() {
+        val ids = uiState.value.notes.map { it.localId }
+        selection.value = if (selection.value.size == ids.size) emptySet() else ids.toSet()
+    }
+
+    fun moveSelected(notebookServerId: String) {
+        val ids = selection.value.toList()
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            ids.forEach { noteRepository.moveToNotebook(it, notebookServerId) }
+            clearSelection()
+            messages.emit("已移动 ${ids.size} 条笔记，将在下次同步时上传")
+        }
+    }
+
+    /** 回收站内为永久删除，否则统一移入回收站。 */
+    fun deleteSelected() {
+        val ids = selection.value.toList()
+        if (ids.isEmpty()) return
+        val account = session.value.account ?: return
+        val permanent = filter.value.trash
+        viewModelScope.launch {
+            var failed = 0
+            ids.forEach { id ->
+                if (permanent) {
+                    val note = noteRepository.get(id) ?: return@forEach
+                    runCatching { noteRepository.deleteForever(account, note) }
+                        .onFailure { failed++ }
+                } else {
+                    noteRepository.setTrash(id, true)
+                    runCatching { noteRepository.push(id, account) }
+                }
+            }
+            clearSelection()
+            messages.emit(
+                if (failed > 0) "已处理 ${ids.size - failed} 条，${failed} 条删除失败"
+                else if (permanent) "已永久删除 ${ids.size} 条笔记"
+                else "已将 ${ids.size} 条笔记移至回收站"
+            )
+        }
+    }
+
+    fun exportSelected(targetDir: android.net.Uri, format: com.leanote.next.data.transfer.ExportFormat) {
+        val ids = selection.value
+        val notes = uiState.value.notes.filter { it.localId in ids }
+        if (notes.isEmpty() || exporting.value) return
+        viewModelScope.launch {
+            exporting.value = true
+            runCatching { noteTransfer.exportNotes(notes, targetDir, format) }
+                .onSuccess { count ->
+                    messages.emit("已导出 $count 条笔记（${format.label}）")
+                    clearSelection()
+                }
+                .onFailure { messages.emit("导出失败：${it.message ?: "未知错误"}") }
+            exporting.value = false
+        }
+    }
 
     fun setSortMode(mode: SortMode) {
         viewModelScope.launch { settingsStore.setSortMode(mode) }

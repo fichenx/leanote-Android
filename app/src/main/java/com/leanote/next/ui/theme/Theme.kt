@@ -310,6 +310,98 @@ val LeanoteShapes = Shapes(
     extraLarge = RoundedCornerShape(28.dp),
 )
 
+data class ColorRole(
+    val key: String,
+    val displayName: String,
+)
+
+object ColorRoles {
+    const val PRIMARY = "primary"
+    const val ON_PRIMARY = "onPrimary"
+    const val BACKGROUND = "background"
+    const val ON_BACKGROUND = "onBackground"
+    const val SURFACE = "surface"
+    const val ON_SURFACE = "onSurface"
+    const val SURFACE_VARIANT = "surfaceVariant"
+    const val ON_SURFACE_VARIANT = "onSurfaceVariant"
+    const val SECONDARY_CONTAINER = "secondaryContainer"
+    const val OUTLINE = "outline"
+
+    val all = listOf(
+        ColorRole(PRIMARY, "主题色"),
+        ColorRole(ON_PRIMARY, "主题色文字"),
+        ColorRole(BACKGROUND, "背景色"),
+        ColorRole(ON_BACKGROUND, "正文文字"),
+        ColorRole(SURFACE, "卡片背景"),
+        ColorRole(ON_SURFACE, "卡片文字"),
+        ColorRole(SURFACE_VARIANT, "辅助表面"),
+        ColorRole(ON_SURFACE_VARIANT, "次要文字"),
+        ColorRole(SECONDARY_CONTAINER, "次级容器"),
+        ColorRole(OUTLINE, "边框"),
+    )
+}
+
+fun ColorScheme.colorForRole(roleKey: String): Color = when (roleKey) {
+    ColorRoles.PRIMARY -> primary
+    ColorRoles.ON_PRIMARY -> onPrimary
+    ColorRoles.BACKGROUND -> background
+    ColorRoles.ON_BACKGROUND -> onBackground
+    ColorRoles.SURFACE -> surface
+    ColorRoles.ON_SURFACE -> onSurface
+    ColorRoles.SURFACE_VARIANT -> surfaceVariant
+    ColorRoles.ON_SURFACE_VARIANT -> onSurfaceVariant
+    ColorRoles.SECONDARY_CONTAINER -> secondaryContainer
+    ColorRoles.OUTLINE -> outline
+    else -> primary
+}
+
+fun parseHexColor(value: String): Color? {
+    val hex = value.trim().removePrefix("#")
+    if (hex.length != 3 && hex.length != 6 && hex.length != 8) return null
+    if (hex.any { it !in '0'..'9' && it !in 'a'..'f' && it !in 'A'..'F' }) return null
+
+    val argb = when (hex.length) {
+        3 -> "FF" + hex.map { "$it$it" }.joinToString("")
+        6 -> "FF$hex"
+        else -> hex
+    }
+    return Color(
+        alpha = argb.substring(0, 2).toInt(16),
+        red = argb.substring(2, 4).toInt(16),
+        green = argb.substring(4, 6).toInt(16),
+        blue = argb.substring(6, 8).toInt(16),
+    )
+}
+
+private fun ColorScheme.withCustomColors(customColors: Map<String, String>): ColorScheme {
+    if (customColors.isEmpty()) return this
+
+    val primary = customColors[ColorRoles.PRIMARY]?.let(::parseHexColor)
+    val onPrimary = customColors[ColorRoles.ON_PRIMARY]?.let(::parseHexColor)
+    val background = customColors[ColorRoles.BACKGROUND]?.let(::parseHexColor)
+    val onBackground = customColors[ColorRoles.ON_BACKGROUND]?.let(::parseHexColor)
+    val surface = customColors[ColorRoles.SURFACE]?.let(::parseHexColor)
+    val onSurface = customColors[ColorRoles.ON_SURFACE]?.let(::parseHexColor)
+    val surfaceVariant = customColors[ColorRoles.SURFACE_VARIANT]?.let(::parseHexColor)
+    val onSurfaceVariant = customColors[ColorRoles.ON_SURFACE_VARIANT]?.let(::parseHexColor)
+    val secondaryContainer = customColors[ColorRoles.SECONDARY_CONTAINER]?.let(::parseHexColor)
+    val outline = customColors[ColorRoles.OUTLINE]?.let(::parseHexColor)
+
+    return copy(
+        primary = primary ?: this.primary,
+        onPrimary = onPrimary ?: this.onPrimary,
+        background = background ?: this.background,
+        onBackground = onBackground ?: this.onBackground,
+        surface = surface ?: this.surface,
+        onSurface = onSurface ?: this.onSurface,
+        surfaceVariant = surfaceVariant ?: this.surfaceVariant,
+        onSurfaceVariant = onSurfaceVariant ?: this.onSurfaceVariant,
+        secondaryContainer = secondaryContainer ?: this.secondaryContainer,
+        outline = outline ?: this.outline,
+        surfaceTint = primary ?: this.surfaceTint,
+    )
+}
+
 @Composable
 fun LeanoteTheme(settings: AppSettings, content: @Composable () -> Unit) {
     val dark = when (settings.themeMode) {
@@ -318,13 +410,13 @@ fun LeanoteTheme(settings: AppSettings, content: @Composable () -> Unit) {
         ThemeMode.DARK -> true
     }
     val context = LocalContext.current
-    val scheme = when {
+    val baseScheme = when {
         settings.dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
             if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         else -> colorSchemeFor(settings.palette, dark)
     }
     MaterialTheme(
-        colorScheme = scheme,
+        colorScheme = baseScheme.withCustomColors(settings.customColors),
         typography = typographyFor(settings.palette),
         shapes = shapesFor(settings.palette),
         content = content,

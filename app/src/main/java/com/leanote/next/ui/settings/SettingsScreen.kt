@@ -73,6 +73,7 @@ import com.leanote.next.ui.components.ConfirmDialog
 fun SettingsScreen(
     onBack: () -> Unit,
     onLoggedOut: () -> Unit,
+    onOpenDataTransfer: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -178,6 +179,14 @@ fun SettingsScreen(
                 }
             }
 
+            item {
+                CustomColorsSection(
+                    customColors = settings.customColors,
+                    onColorChange = viewModel::setCustomColor,
+                    onClearAll = viewModel::clearCustomColors,
+                )
+            }
+
             item { SectionTitle("笔记") }
             item {
                 SettingsCard {
@@ -213,6 +222,20 @@ fun SettingsScreen(
                                 ),
                             )
                         }
+                    }
+                }
+            }
+
+            item { SectionTitle("数据") }
+            item {
+                SettingsCard {
+                    SettingLabel("备份与导入导出", "本地备份/恢复全部笔记与设置，支持 Markdown、HTML、ENEX 格式")
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = onOpenDataTransfer,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("打开数据管理")
                     }
                 }
             }

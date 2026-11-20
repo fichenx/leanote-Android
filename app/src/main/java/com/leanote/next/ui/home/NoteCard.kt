@@ -55,6 +55,8 @@ fun NoteCard(
     notebookName: String?,
     account: Account?,
     selected: Boolean = false,
+    selectionMode: Boolean = false,
+    onToggleSelect: () -> Unit = {},
     onClick: () -> Unit,
     onEdit: () -> Unit,
     onTrash: () -> Unit,
@@ -95,7 +97,10 @@ fun NoteCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(MaterialTheme.shapes.large)
-                .combinedClickable(onClick = onClick, onLongClick = { menuOpen = true }),
+                .combinedClickable(
+                    onClick = { if (selectionMode) onToggleSelect() else onClick() },
+                    onLongClick = onToggleSelect,
+                ),
         ) {
             Column(Modifier.padding(start = 18.dp, end = 8.dp, top = 12.dp, bottom = 14.dp)) {
                 Row(verticalAlignment = Alignment.Top) {
@@ -117,6 +122,12 @@ fun NoteCard(
                         )
                     }
                     Column(horizontalAlignment = Alignment.End) {
+                        if (selectionMode) {
+                            androidx.compose.material3.Checkbox(
+                                checked = selected,
+                                onCheckedChange = { onToggleSelect() },
+                            )
+                        } else {
                         Box {
                             IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(30.dp)) {
                                 Icon(
@@ -149,6 +160,7 @@ fun NoteCard(
                                     })
                                 }
                             }
+                        }
                         }
                         if (thumbnail != null) {
                             Spacer(Modifier.height(2.dp))

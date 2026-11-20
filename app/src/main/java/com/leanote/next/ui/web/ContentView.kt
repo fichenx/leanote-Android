@@ -11,6 +11,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -46,8 +48,17 @@ fun MarkdownContent(
     val textColor = MaterialTheme.colorScheme.onSurface
     val linkColor = MaterialTheme.colorScheme.primary
     val quoteColor = MaterialTheme.colorScheme.onSurfaceVariant
+    // Markdown 代码背景与 HTML 阅读保持一致，深色下提高亮度便于区分。
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val codeBg = if (darkTheme) {
+        MaterialTheme.colorScheme.surfaceVariant
+            .copy(alpha = 0.55f)
+            .compositeOver(MaterialTheme.colorScheme.background)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    }
 
-    val markwon = remember(linkColor, textColor) {
+    val markwon = remember(linkColor, textColor, quoteColor, codeBg) {
         Markwon.builder(context)
             .usePlugin(StrikethroughPlugin.create())
             .usePlugin(TablePlugin.create(context))
@@ -59,6 +70,8 @@ fun MarkdownContent(
                 override fun configureTheme(builder: io.noties.markwon.core.MarkwonTheme.Builder) {
                     builder.linkColor(linkColor.toArgb())
                     builder.blockQuoteColor(quoteColor.toArgb())
+                    builder.codeBackgroundColor(codeBg.toArgb())
+                    builder.codeTextColor(textColor.toArgb())
                 }
             })
             .build()
@@ -102,11 +115,23 @@ fun HtmlContent(
     val fg = MaterialTheme.colorScheme.onSurface.toArgb()
     val link = MaterialTheme.colorScheme.primary.toArgb()
     val quote = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
-    val codeBg = MaterialTheme.colorScheme.surfaceContainerHigh.toArgb()
+    // 代码块背景：深色下提高亮度并加边框，避免与正文背景混在一起。
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val codeBgColor = if (darkTheme) {
+        MaterialTheme.colorScheme.surfaceVariant
+            .copy(alpha = 0.55f)
+            .compositeOver(MaterialTheme.colorScheme.background)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+    val codeBg = codeBgColor.toArgb()
+    val codeBorder = MaterialTheme.colorScheme.outlineVariant
+        .copy(alpha = if (darkTheme) 0.9f else 0.6f)
+        .toArgb()
     val border = MaterialTheme.colorScheme.outlineVariant.toArgb()
 
-    val fullHtml = remember(html, bg, fg, link, quote, codeBg, border, fitToWidth) {
-        buildHtmlDocument(html, bg, fg, link, quote, codeBg, border, fitToWidth)
+    val fullHtml = remember(html, bg, fg, link, quote, codeBg, codeBorder, border, fitToWidth) {
+        buildHtmlDocument(html, bg, fg, link, quote, codeBg, codeBorder, border, fitToWidth)
     }
 
     AndroidView(
@@ -171,6 +196,7 @@ internal fun buildHtmlDocument(
     link: Int,
     quote: Int,
     codeBg: Int,
+    codeBorder: Int,
     border: Int,
     fitToWidth: Boolean = true,
 ): String {
@@ -227,7 +253,8 @@ internal fun buildHtmlDocument(
           blockquote { margin: 16px 0; padding: 6px 16px; border-left: 3px solid ${hex(link)};
                        color: ${hex(quote)}; background: ${hex(codeBg)}55; border-radius: 0 8px 8px 0; }
           pre, code { font-family: "JetBrains Mono", Menlo, Consolas, monospace; font-size: 14px; }
-          pre { background: ${hex(codeBg)}; padding: 14px 16px; border-radius: 12px; }
+          pre { background: ${hex(codeBg)}; padding: 14px 16px; border-radius: 12px;
+                border: 1px solid ${hex(codeBorder)}; }
           code { background: ${hex(codeBg)}; padding: 2px 5px; border-radius: 5px; }
           pre code { background: transparent; padding: 0; }
           table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 15px; }

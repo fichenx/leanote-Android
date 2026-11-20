@@ -68,6 +68,19 @@ data class NoteImageEntity(
     val mimeType: String = "image/jpeg",
 )
 
+@Entity(tableName = "note_attachments")
+data class NoteAttachmentEntity(
+    @PrimaryKey(autoGenerate = true) val localId: Long = 0,
+    val noteLocalId: Long,
+    val accountId: String,
+    val serverId: String? = null,
+    val fileName: String,
+    val mimeType: String = "application/octet-stream",
+    val size: Long = 0L,
+    val localPath: String? = null,
+    val createdTime: Long = 0L,
+)
+
 @Dao
 interface NoteDao {
     @Query(
@@ -168,13 +181,32 @@ interface ImageDao {
     suspend fun deleteOfNote(noteLocalId: Long)
 }
 
+@Dao
+interface AttachmentDao {
+    @Query("SELECT * FROM note_attachments WHERE noteLocalId = :noteLocalId ORDER BY createdTime DESC, localId DESC")
+    fun observe(noteLocalId: Long): Flow<List<NoteAttachmentEntity>>
+
+    @Query("SELECT * FROM note_attachments WHERE noteLocalId = :noteLocalId ORDER BY createdTime DESC, localId DESC")
+    suspend fun listOfNote(noteLocalId: Long): List<NoteAttachmentEntity>
+
+    @Upsert
+    suspend fun upsert(attachment: NoteAttachmentEntity): Long
+
+    @Delete
+    suspend fun delete(attachment: NoteAttachmentEntity)
+
+    @Query("SELECT * FROM note_attachments WHERE serverId = :serverId LIMIT 1")
+    suspend fun getByServerId(serverId: String): NoteAttachmentEntity?
+}
+
 @Database(
-    entities = [NoteEntity::class, NotebookEntity::class, NoteImageEntity::class],
-    version = 1,
+    entities = [NoteEntity::class, NotebookEntity::class, NoteImageEntity::class, NoteAttachmentEntity::class],
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
     abstract fun notebookDao(): NotebookDao
     abstract fun imageDao(): ImageDao
+    abstract fun attachmentDao(): AttachmentDao
 }

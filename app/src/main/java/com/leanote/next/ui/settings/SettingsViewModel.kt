@@ -77,6 +77,14 @@ class SettingsViewModel @Inject constructor(
         settingsStore.setDynamicColor(enabled)
     }
 
+    fun setCustomColor(role: String, hex: String?) = viewModelScope.launch {
+        settingsStore.setCustomColor(role, hex)
+    }
+
+    fun clearCustomColors() = viewModelScope.launch {
+        settingsStore.clearCustomColors()
+    }
+
     fun setAutoSync(enabled: Boolean) = viewModelScope.launch {
         settingsStore.setAutoSync(enabled)
     }

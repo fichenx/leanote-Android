@@ -1,6 +1,8 @@
 package com.leanote.next.data.remote
 
 import com.leanote.next.data.remote.dto.ApiBase
+import com.leanote.next.data.remote.dto.AttachDto
+import com.leanote.next.data.remote.dto.AttachUploadResponse
 import com.leanote.next.data.remote.dto.LoginResponse
 import com.leanote.next.data.remote.dto.LogoResponse
 import com.leanote.next.data.remote.dto.NoteDto
@@ -132,6 +134,26 @@ interface LeanoteApi {
     suspend fun deleteTrash(
         @Query("noteId") noteId: String,
         @Query("usn") usn: Int,
+        @Query("token") token: String,
+    ): UpdateResponse
+
+    @GET("attach/getAttachs")
+    suspend fun getAttachs(
+        @Query("noteId") noteId: String,
+        @Query("token") token: String,
+    ): List<AttachDto>
+
+    @Multipart
+    @POST("file/uploadAttach")
+    suspend fun uploadAttach(
+        @Part file: MultipartBody.Part,
+        @Query("noteId") noteId: String,
+        @Query("token") token: String,
+    ): AttachUploadResponse
+
+    @GET("attach/deleteAttach")
+    suspend fun deleteAttach(
+        @Query("attachId") attachId: String,
         @Query("token") token: String,
     ): UpdateResponse
 }

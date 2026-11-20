@@ -23,6 +23,7 @@ object Routes {
     const val LOGIN = "login"
     const val HOME = "home"
     const val SETTINGS = "settings"
+    const val DATA_TRANSFER = "data_transfer"
     const val NOTE = "note/{localId}"
     const val EDITOR = "editor/{localId}"
 
@@ -104,6 +105,13 @@ fun LeanoteNavHost(
                         popUpTo(0) { inclusive = true }
                     }
                 },
+                onOpenDataTransfer = { navController.navigate(Routes.DATA_TRANSFER) },
+            )
+        }
+
+        composable(Routes.DATA_TRANSFER) {
+            com.leanote.next.ui.settings.DataTransferScreen(
+                onBack = { navController.popBackStack() },
             )
         }
     }
