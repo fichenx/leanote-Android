@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,6 +54,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -69,6 +71,10 @@ import com.leanote.next.ui.components.EmptyState
 import com.leanote.next.ui.components.LoadingBox
 import com.leanote.next.ui.components.TagRow
 import com.leanote.next.ui.theme.MonoFont
+import com.leanote.next.data.model.SurfaceEffect
+import com.leanote.next.ui.theme.LocalSurfaceEffect
+import com.leanote.next.ui.theme.barColor
+import com.leanote.next.ui.theme.pageBrush
 import com.leanote.next.ui.web.HtmlContent
 import com.leanote.next.ui.web.MarkdownContent
 import com.leanote.next.util.TimeUtils
@@ -91,6 +97,8 @@ fun NoteDetailScreen(
     var confirmDelete by remember { mutableStateOf(false) }
     var showAttachments by remember { mutableStateOf(false) }
     var fitToWidth by rememberSaveable { mutableStateOf(true) }
+    val effect = LocalSurfaceEffect.current
+    val scheme = MaterialTheme.colorScheme
 
     val imageRepository = remember(context) {
         EntryPointAccessors.fromApplication(
@@ -108,7 +116,8 @@ fun NoteDetailScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = if (effect == SurfaceEffect.NONE) scheme.background else Color.Transparent,
+        modifier = Modifier.background(effect.pageBrush(scheme)),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
@@ -219,7 +228,7 @@ fun NoteDetailScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
+                    containerColor = effect.barColor(scheme),
                 ),
             )
         },

@@ -91,15 +91,22 @@ class AuthRepository @Inject constructor(
     }
 
     /** 从服务器刷新用户名、邮箱与头像地址。 */
-    suspend fun refreshProfile(account: Account): Account? = withContext(Dispatchers.IO) {
+    suspend fun refreshProfile(account: Account, forceAvatarRefresh: Boolean = false): Account? = withContext(Dispatchers.IO) {
         val info = runCatching {
             apiClient.api(account.host).userInfo(account.userId, account.token)
         }.getOrNull() ?: return@withContext null
         if (!info.ok) return@withContext null
+        val newLogo = info.logo.ifBlank { account.logo }
         val updated = account.copy(
             username = info.username.ifBlank { account.username },
             email = info.email.ifBlank { account.email },
-            logo = info.logo.ifBlank { account.logo },
+            logo = newLogo,
+            // 头像地址变化或手动同步时递增版本号，避免 Coil 命中旧缓存。
+            avatarVersion = if (forceAvatarRefresh || newLogo != account.logo) {
+                account.avatarVersion + 1
+            } else {
+                account.avatarVersion
+            },
         )
         if (updated != account) {
             accountStore.upsert(updated, makeActive = false)
@@ -137,10 +144,21 @@ class AuthRepository @Inject constructor(
             }.getOrElse {
                 throw ApiException("头像上传失败：${it.message ?: "网络错误"}")
             }
-            if (response.logo.isBlank()) {
+            // 部分 Leanote 版本上传成功后只返回 Ok，不返回 Logo，需要再查一次用户信息。
+            val info = runCatching {
+                apiClient.api(account.host).userInfo(account.userId, account.token)
+            }.getOrNull()?.takeIf { it.ok }
+            val serverLogo = response.logo.ifBlank { info?.logo.orEmpty() }
+            if (!response.ok && serverLogo.isBlank()) {
                 throw ApiException(response.msg?.takeIf { it.isNotBlank() } ?: "头像上传失败")
             }
-            val updated = account.copy(logo = response.logo)
+            val updated = account.copy(
+                username = info?.username?.takeIf { it.isNotBlank() } ?: account.username,
+                email = info?.email?.takeIf { it.isNotBlank() } ?: account.email,
+                logo = serverLogo.ifBlank { account.logo },
+                // 即使服务器返回相同地址，也强制刷新一次图片缓存。
+                avatarVersion = account.avatarVersion + 1,
+            )
             accountStore.upsert(updated, makeActive = false)
             updated
         } finally {

@@ -22,7 +22,11 @@ import com.leanote.next.data.model.ThemeMode
 import com.leanote.next.data.model.ThemePalette
 import androidx.compose.material3.Shapes
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontSynthesis
+import com.leanote.next.data.model.SurfaceEffect
 
 private val Ink = Color(0xFF191C1B)
 private val Paper = Color(0xFFFBFAF6)
@@ -322,6 +326,7 @@ object ColorRoles {
     const val ON_BACKGROUND = "onBackground"
     const val SURFACE = "surface"
     const val ON_SURFACE = "onSurface"
+    const val NOTE_CARD = "noteCard"
     const val SURFACE_VARIANT = "surfaceVariant"
     const val ON_SURFACE_VARIANT = "onSurfaceVariant"
     const val SECONDARY_CONTAINER = "secondaryContainer"
@@ -332,7 +337,8 @@ object ColorRoles {
         ColorRole(ON_PRIMARY, "主题色文字"),
         ColorRole(BACKGROUND, "背景色"),
         ColorRole(ON_BACKGROUND, "正文文字"),
-        ColorRole(SURFACE, "卡片背景"),
+        ColorRole(SURFACE, "页面表面"),
+        ColorRole(NOTE_CARD, "笔记卡片"),
         ColorRole(ON_SURFACE, "卡片文字"),
         ColorRole(SURFACE_VARIANT, "辅助表面"),
         ColorRole(ON_SURFACE_VARIANT, "次要文字"),
@@ -347,6 +353,7 @@ fun ColorScheme.colorForRole(roleKey: String): Color = when (roleKey) {
     ColorRoles.BACKGROUND -> background
     ColorRoles.ON_BACKGROUND -> onBackground
     ColorRoles.SURFACE -> surface
+    ColorRoles.NOTE_CARD -> surfaceContainerLowest
     ColorRoles.ON_SURFACE -> onSurface
     ColorRoles.SURFACE_VARIANT -> surfaceVariant
     ColorRoles.ON_SURFACE_VARIANT -> onSurfaceVariant
@@ -381,6 +388,7 @@ private fun ColorScheme.withCustomColors(customColors: Map<String, String>): Col
     val background = customColors[ColorRoles.BACKGROUND]?.let(::parseHexColor)
     val onBackground = customColors[ColorRoles.ON_BACKGROUND]?.let(::parseHexColor)
     val surface = customColors[ColorRoles.SURFACE]?.let(::parseHexColor)
+    val noteCard = customColors[ColorRoles.NOTE_CARD]?.let(::parseHexColor)
     val onSurface = customColors[ColorRoles.ON_SURFACE]?.let(::parseHexColor)
     val surfaceVariant = customColors[ColorRoles.SURFACE_VARIANT]?.let(::parseHexColor)
     val onSurfaceVariant = customColors[ColorRoles.ON_SURFACE_VARIANT]?.let(::parseHexColor)
@@ -393,6 +401,7 @@ private fun ColorScheme.withCustomColors(customColors: Map<String, String>): Col
         background = background ?: this.background,
         onBackground = onBackground ?: this.onBackground,
         surface = surface ?: this.surface,
+        surfaceContainerLowest = noteCard ?: this.surfaceContainerLowest,
         onSurface = onSurface ?: this.onSurface,
         surfaceVariant = surfaceVariant ?: this.surfaceVariant,
         onSurfaceVariant = onSurfaceVariant ?: this.onSurfaceVariant,
@@ -415,10 +424,65 @@ fun LeanoteTheme(settings: AppSettings, content: @Composable () -> Unit) {
             if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         else -> colorSchemeFor(settings.palette, dark)
     }
-    MaterialTheme(
-        colorScheme = baseScheme.withCustomColors(settings.customColors),
-        typography = typographyFor(settings.palette),
-        shapes = shapesFor(settings.palette),
-        content = content,
+    CompositionLocalProvider(LocalSurfaceEffect provides settings.surfaceEffect) {
+        MaterialTheme(
+            colorScheme = baseScheme.withCustomColors(settings.customColors),
+            typography = typographyFor(settings.palette),
+            shapes = shapesFor(settings.palette),
+            content = content,
+        )
+    }
+}
+
+/** 当前界面材质效果，由主题统一提供。 */
+val LocalSurfaceEffect = staticCompositionLocalOf { SurfaceEffect.NONE }
+
+/** 顶栏、侧边栏等大面积容器的底色。 */
+fun SurfaceEffect.barColor(scheme: ColorScheme): Color = when (this) {
+    SurfaceEffect.NONE -> scheme.background
+    SurfaceEffect.FROSTED -> scheme.surface.copy(alpha = 0.88f)
+    SurfaceEffect.ACRYLIC -> scheme.surface.copy(alpha = 0.68f)
+}
+
+/** 卡片底色，半透明后可以透出页面渐变，形成磨砂/亚克力观感。 */
+fun SurfaceEffect.cardColor(scheme: ColorScheme, base: Color = scheme.surfaceContainerLowest): Color = when (this) {
+    SurfaceEffect.NONE -> base
+    SurfaceEffect.FROSTED -> base.copy(alpha = 0.86f)
+    SurfaceEffect.ACRYLIC -> base.copy(alpha = 0.62f)
+}
+
+/** 页面背景渐变，材质效果关闭时保持纯色。 */
+fun SurfaceEffect.pageBrush(scheme: ColorScheme): Brush = when (this) {
+    SurfaceEffect.NONE -> {
+        Brush.verticalGradient(listOf(scheme.background, scheme.background))
+    }
+    SurfaceEffect.FROSTED -> Brush.verticalGradient(
+        listOf(
+            scheme.background,
+            scheme.primary.copy(alpha = 0.08f),
+            scheme.secondaryContainer.copy(alpha = 0.14f),
+            scheme.background,
+        ),
     )
+    SurfaceEffect.ACRYLIC -> Brush.linearGradient(
+        listOf(
+            scheme.primary.copy(alpha = 0.16f),
+            scheme.background,
+            scheme.secondaryContainer.copy(alpha = 0.22f),
+            scheme.background,
+        ),
+    )
+}
+
+/** 亚克力材质叠加的高光渐变。 */
+fun SurfaceEffect.sheenBrush(): Brush? = if (this == SurfaceEffect.ACRYLIC) {
+    Brush.linearGradient(
+        listOf(
+            Color.White.copy(alpha = 0.10f),
+            Color.Transparent,
+            Color.White.copy(alpha = 0.04f),
+        ),
+    )
+} else {
+    null
 }

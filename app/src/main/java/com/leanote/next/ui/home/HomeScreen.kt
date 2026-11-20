@@ -84,12 +84,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.leanote.next.data.local.NoteEntity
+import com.leanote.next.data.model.SurfaceEffect
+import com.leanote.next.ui.theme.LocalSurfaceEffect
+import com.leanote.next.ui.theme.barColor
+import com.leanote.next.ui.theme.pageBrush
 import com.leanote.next.data.local.NotebookEntity
 import com.leanote.next.data.model.SortMode
 import com.leanote.next.ui.components.AccountAvatar
@@ -113,6 +118,8 @@ fun HomeScreen(
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val effect = LocalSurfaceEffect.current
+    val scheme = MaterialTheme.colorScheme
 
     var showNewSheet by remember { mutableStateOf(false) }
     var showAccountSheet by remember { mutableStateOf(false) }
@@ -151,7 +158,7 @@ fun HomeScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
-                drawerContainerColor = MaterialTheme.colorScheme.surface,
+                drawerContainerColor = effect.barColor(scheme),
                 drawerShape = MaterialTheme.shapes.extraLarge,
             ) {
                 HomeDrawerContent(
@@ -204,7 +211,8 @@ fun HomeScreen(
         },
     ) {
         Scaffold(
-            containerColor = MaterialTheme.colorScheme.background,
+            containerColor = if (effect == SurfaceEffect.NONE) scheme.background else Color.Transparent,
+            modifier = Modifier.background(effect.pageBrush(scheme)),
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
                 Column {
@@ -328,7 +336,7 @@ fun HomeScreen(
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.background,
+                            containerColor = effect.barColor(scheme),
                         ),
                     )
                     SearchField(

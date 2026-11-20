@@ -16,8 +16,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -27,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +70,8 @@ fun CustomColorsSection(
     onClearAll: () -> Unit,
 ) {
     var editingRole by remember { mutableStateOf<ColorRole?>(null) }
+    // 默认收起，避免设置页一进来就被十几个颜色项占满。
+    var expanded by rememberSaveable { mutableStateOf(false) }
 
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -72,63 +79,82 @@ fun CustomColorsSection(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Column(Modifier.weight(1f)) {
                     Text("自定义配色", style = MaterialTheme.typography.bodyLarge)
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        "在预设或动态取色之上覆盖指定颜色",
+                        if (customColors.isEmpty()) {
+                            "在预设或动态取色之上覆盖指定颜色"
+                        } else {
+                            "已自定义 ${customColors.size} 项颜色"
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                TextButton(
-                    onClick = onClearAll,
-                    enabled = customColors.isNotEmpty(),
-                ) {
-                    Text("全部恢复默认")
-                }
+                Icon(
+                    if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                    contentDescription = if (expanded) "收起" else "展开",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-            Spacer(Modifier.height(8.dp))
 
-            ColorRoles.all.forEachIndexed { index, role ->
-                if (index > 0) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                }
-                val customized = customColors.containsKey(role.key)
-                val color = customColors[role.key]
-                    ?.let(::parseHexColor)
-                    ?: MaterialTheme.colorScheme.colorForRole(role.key)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { editingRole = role }
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(role.displayName, style = MaterialTheme.typography.bodyMedium)
-                    if (customized) {
-                        Spacer(Modifier.width(8.dp))
-                        Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            shape = MaterialTheme.shapes.extraSmall,
-                        ) {
-                            Text(
-                                "已自定义",
-                                style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            )
-                        }
+            if (expanded) {
+                Spacer(Modifier.height(4.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(
+                        onClick = onClearAll,
+                        enabled = customColors.isNotEmpty(),
+                    ) {
+                        Text("全部恢复默认")
                     }
-                    Spacer(Modifier.weight(1f))
-                    Box(
-                        Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(color)
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
-                    )
+                }
+
+                ColorRoles.all.forEachIndexed { index, role ->
+                    if (index > 0) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                    }
+                    val customized = customColors.containsKey(role.key)
+                    val color = customColors[role.key]
+                        ?.let(::parseHexColor)
+                        ?: MaterialTheme.colorScheme.colorForRole(role.key)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { editingRole = role }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(role.displayName, style = MaterialTheme.typography.bodyMedium)
+                        if (customized) {
+                            Spacer(Modifier.width(8.dp))
+                            Surface(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                shape = MaterialTheme.shapes.extraSmall,
+                            ) {
+                                Text(
+                                    "已自定义",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                )
+                            }
+                        }
+                        Spacer(Modifier.weight(1f))
+                        Box(
+                            Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .background(color)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                        )
+                    }
                 }
             }
         }

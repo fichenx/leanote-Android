@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.leanote.next.data.model.AppSettings
 import com.leanote.next.data.model.SortMode
+import com.leanote.next.data.model.SurfaceEffect
 import com.leanote.next.data.model.ThemeMode
 import com.leanote.next.data.model.ThemePalette
 import com.leanote.next.data.prefs.AccountStore
@@ -39,6 +40,9 @@ class SettingsViewModel @Inject constructor(
 
     private val _uploadingAvatar = MutableStateFlow(false)
     val uploadingAvatar = _uploadingAvatar.asStateFlow()
+
+    private val _refreshingProfile = MutableStateFlow(false)
+    val refreshingProfile = _refreshingProfile.asStateFlow()
 
     val messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val loggedOut = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -75,6 +79,32 @@ class SettingsViewModel @Inject constructor(
 
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch {
         settingsStore.setDynamicColor(enabled)
+    }
+
+    fun setSurfaceEffect(effect: SurfaceEffect) = viewModelScope.launch {
+        settingsStore.setSurfaceEffect(effect)
+    }
+
+    /** 手动从服务器拉取头像与用户名，解决其他端更换头像后本机不同步的问题。 */
+    fun refreshProfile() {
+        if (_refreshingProfile.value) return
+        viewModelScope.launch {
+            val current = accountStore.current()
+            if (current == null) {
+                messages.emit("请先登录账户")
+                return@launch
+            }
+            _refreshingProfile.value = true
+            val updated = runCatching { authRepository.refreshProfile(current, forceAvatarRefresh = true) }.getOrNull()
+            _refreshingProfile.value = false
+            messages.emit(
+                when {
+                    updated == null -> "无法连接服务器，头像同步失败"
+                    updated.logo.isBlank() -> "服务器尚未设置头像"
+                    else -> "头像已从服务器同步"
+                },
+            )
+        }
     }
 
     fun setCustomColor(role: String, hex: String?) = viewModelScope.launch {

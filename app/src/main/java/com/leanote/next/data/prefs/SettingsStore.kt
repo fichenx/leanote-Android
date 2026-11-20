@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.leanote.next.data.model.AppSettings
 import com.leanote.next.data.model.SortMode
+import com.leanote.next.data.model.SurfaceEffect
 import com.leanote.next.data.model.ThemeMode
 import com.leanote.next.data.model.ThemePalette
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -30,6 +31,7 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
     private val themeKey = stringPreferencesKey("theme_mode")
     private val paletteKey = stringPreferencesKey("theme_palette")
     private val dynamicKey = booleanPreferencesKey("dynamic_color")
+    private val surfaceEffectKey = stringPreferencesKey("surface_effect")
     private val customColorsKey = stringPreferencesKey("custom_colors")
     private val autoSyncKey = booleanPreferencesKey("auto_sync")
     private val sortKey = stringPreferencesKey("sort_mode")
@@ -40,6 +42,7 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
             themeMode = runCatching { ThemeMode.valueOf(prefs[themeKey] ?: "") }.getOrDefault(ThemeMode.SYSTEM),
             palette = runCatching { ThemePalette.valueOf(prefs[paletteKey] ?: "") }.getOrDefault(ThemePalette.FOREST),
             dynamicColor = prefs[dynamicKey] ?: false,
+            surfaceEffect = runCatching { SurfaceEffect.valueOf(prefs[surfaceEffectKey] ?: "") }.getOrDefault(SurfaceEffect.NONE),
             customColors = decodeCustomColors(prefs[customColorsKey]),
             autoSync = prefs[autoSyncKey] ?: true,
             sortMode = runCatching { SortMode.valueOf(prefs[sortKey] ?: "") }.getOrDefault(SortMode.UPDATED_DESC),
@@ -52,6 +55,8 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
     suspend fun setPalette(palette: ThemePalette) = dataStore.edit { it[paletteKey] = palette.name }
 
     suspend fun setDynamicColor(enabled: Boolean) = dataStore.edit { it[dynamicKey] = enabled }
+
+    suspend fun setSurfaceEffect(effect: SurfaceEffect) = dataStore.edit { it[surfaceEffectKey] = effect.name }
 
     suspend fun setCustomColor(role: String, hex: String?) {
         dataStore.edit { prefs ->

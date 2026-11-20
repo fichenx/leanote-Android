@@ -14,6 +14,8 @@ data class Account(
     val username: String,
     val token: String,
     val logo: String = "",
+    /** 头像版本号，用于让图片缓存感知头像更新。 */
+    val avatarVersion: Long = 0L,
     val noteUsn: Int = 0,
     val notebookUsn: Int = 0,
     val lastUsedAt: Long = 0L,
@@ -24,14 +26,22 @@ data class Account(
     fun avatarUrl(): String? {
         val raw = logo.trim()
         if (raw.isBlank()) return null
-        if (raw.startsWith("http://") || raw.startsWith("https://")) return raw
+        if (raw.startsWith("data:")) return raw
+        if (raw.startsWith("http://") || raw.startsWith("https://")) return withToken(raw)
         val path = raw.trimStart('/')
         // 旧版网页端上传头像时只保存 fileId，需要通过文件接口读取。
         return if (Regex("^[a-fA-F0-9]{24}$").matches(path)) {
             host.trimEnd('/') + "/api/file/getImage?fileId=$path&token=$token"
         } else {
-            host.trimEnd('/') + "/" + path
+            withToken(host.trimEnd('/') + "/" + path)
         }
+    }
+
+    /** Leanote 的文件接口需要 token 鉴权，部分版本返回的头像地址不带 token。 */
+    private fun withToken(url: String): String {
+        if (!url.contains("/api/file/") || url.contains("token=")) return url
+        val separator = if (url.contains('?')) "&" else "?"
+        return "$url${separator}token=$token"
     }
 
     fun blogUrl(): String {
@@ -47,10 +57,14 @@ enum class ThemePalette { FOREST, OCEAN, LAVENDER, SUNSET, GRAPHITE, CREAM_PAPER
 
 enum class SortMode { UPDATED_DESC, UPDATED_ASC, CREATED_DESC, TITLE_ASC }
 
+/** 界面材质效果。 */
+enum class SurfaceEffect { NONE, FROSTED, ACRYLIC }
+
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val palette: ThemePalette = ThemePalette.FOREST,
     val dynamicColor: Boolean = false,
+    val surfaceEffect: SurfaceEffect = SurfaceEffect.NONE,
     val customColors: Map<String, String> = emptyMap(),
     val autoSync: Boolean = true,
     val sortMode: SortMode = SortMode.UPDATED_DESC,

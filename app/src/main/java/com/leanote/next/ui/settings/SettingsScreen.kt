@@ -63,10 +63,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.leanote.next.BuildConfig
 import com.leanote.next.data.model.Account
 import com.leanote.next.data.model.SortMode
+import com.leanote.next.data.model.SurfaceEffect
 import com.leanote.next.data.model.ThemeMode
 import com.leanote.next.data.model.ThemePalette
 import com.leanote.next.ui.components.AccountAvatar
 import com.leanote.next.ui.components.ConfirmDialog
+import com.leanote.next.ui.theme.LocalSurfaceEffect
+import com.leanote.next.ui.theme.cardColor
+import com.leanote.next.ui.theme.pageBrush
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,6 +84,7 @@ fun SettingsScreen(
     val account by viewModel.account.collectAsStateWithLifecycle()
     val syncing by viewModel.syncing.collectAsStateWithLifecycle()
     val uploadingAvatar by viewModel.uploadingAvatar.collectAsStateWithLifecycle()
+    val refreshingProfile by viewModel.refreshingProfile.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var confirmLogout by remember { mutableStateOf(false) }
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -94,7 +99,12 @@ fun SettingsScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = if (LocalSurfaceEffect.current == SurfaceEffect.NONE) {
+            MaterialTheme.colorScheme.background
+        } else {
+            Color.Transparent
+        },
+        modifier = Modifier.background(LocalSurfaceEffect.current.pageBrush(MaterialTheme.colorScheme)),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
@@ -105,7 +115,11 @@ fun SettingsScreen(
                 },
                 title = { Text("设置") },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
+                    containerColor = if (LocalSurfaceEffect.current == SurfaceEffect.NONE) {
+                        MaterialTheme.colorScheme.background
+                    } else {
+                        Color.Transparent
+                    },
                 ),
             )
         },
@@ -123,8 +137,10 @@ fun SettingsScreen(
                         account = current,
                         syncing = syncing,
                         uploadingAvatar = uploadingAvatar,
+                        refreshingProfile = refreshingProfile,
                         onSync = viewModel::syncNow,
                         onPickAvatar = { avatarPicker.launch("image/*") },
+                        onRefreshProfile = viewModel::refreshProfile,
                     )
                 }
             }
@@ -175,6 +191,30 @@ fun SettingsScreen(
                             checked = settings.dynamicColor,
                             onCheckedChange = viewModel::setDynamicColor,
                         )
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    SettingLabel("界面材质", "磨砂与亚克力会让顶栏、卡片呈现半透明质感")
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            SurfaceEffect.NONE to "无",
+                            SurfaceEffect.FROSTED to "磨砂",
+                            SurfaceEffect.ACRYLIC to "亚克力",
+                        ).forEach { (effect, label) ->
+                            AssistChip(
+                                onClick = { viewModel.setSurfaceEffect(effect) },
+                                label = { Text(label) },
+                                shape = CircleShape,
+                                border = null,
+                                colors = AssistChipDefaults.assistChipColors(
+                                    containerColor = if (settings.surfaceEffect == effect) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainerHigh
+                                    },
+                                ),
+                            )
+                        }
                     }
                 }
             }
@@ -342,8 +382,10 @@ private fun AccountCard(
     account: Account,
     syncing: Boolean,
     uploadingAvatar: Boolean,
+    refreshingProfile: Boolean,
     onSync: () -> Unit,
     onPickAvatar: () -> Unit,
+    onRefreshProfile: () -> Unit,
 ) {
     Surface(
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
@@ -424,14 +466,33 @@ private fun AccountCard(
                     Text(if (uploadingAvatar) "上传中…" else "更换头像")
                 }
             }
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onRefreshProfile, enabled = !refreshingProfile) {
+                    if (refreshingProfile) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Rounded.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (refreshingProfile) "同步中…" else "从服务器同步头像")
+                }
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "在其他设备换过头像？",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
+    val effect = LocalSurfaceEffect.current
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = effect.cardColor(MaterialTheme.colorScheme, MaterialTheme.colorScheme.surfaceContainerLow),
         shape = MaterialTheme.shapes.large,
         modifier = Modifier.fillMaxWidth(),
     ) {

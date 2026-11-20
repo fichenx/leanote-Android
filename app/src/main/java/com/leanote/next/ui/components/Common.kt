@@ -26,18 +26,21 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.leanote.next.data.local.NoteEntity
 import com.leanote.next.data.model.Account
 import com.leanote.next.util.HtmlUtils
@@ -64,9 +67,21 @@ fun LeanoteMark(modifier: Modifier = Modifier, tint: Color = MaterialTheme.color
 @Composable
 fun AccountAvatar(account: Account, size: Dp = 40.dp) {
     val url = account.avatarUrl()
-    if (url != null) {
+    val context = LocalContext.current
+    // 把头像版本号写进缓存键，服务器换头像后能立即刷新，不再显示旧图。
+    val request = remember(url, account.avatarVersion) {
+        url?.let {
+            ImageRequest.Builder(context)
+                .data(it)
+                .memoryCacheKey("$it#v${account.avatarVersion}")
+                .diskCacheKey("$it#v${account.avatarVersion}")
+                .crossfade(true)
+                .build()
+        }
+    }
+    if (request != null) {
         AsyncImage(
-            model = url,
+            model = request,
             contentDescription = account.displayName,
             modifier = Modifier
                 .size(size)

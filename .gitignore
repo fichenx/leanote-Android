@@ -13,4 +13,5 @@ captures/
 *.jks
 keystore.properties
 keystore/
-screenshots/
+/screenshots/
+.kotlin/
