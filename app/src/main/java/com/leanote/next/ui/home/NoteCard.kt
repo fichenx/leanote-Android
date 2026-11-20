@@ -47,6 +47,7 @@ import com.leanote.next.ui.components.NoteMetaLine
 import com.leanote.next.ui.components.TagRow
 import com.leanote.next.ui.components.notePreview
 import com.leanote.next.ui.theme.LocalSurfaceEffect
+import com.leanote.next.ui.theme.LocalSurfaceTranslucency
 import com.leanote.next.ui.theme.cardColor
 import com.leanote.next.ui.theme.sheenBrush
 import dagger.hilt.android.EntryPointAccessors
@@ -82,11 +83,12 @@ fun NoteCard(
     }
 
     val effect = LocalSurfaceEffect.current
+    val translucency = LocalSurfaceTranslucency.current
     val container = if (selected) {
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
     } else {
         // 跟随「笔记卡片」自定义颜色，并叠加材质效果的半透明。
-        effect.cardColor(MaterialTheme.colorScheme)
+        effect.cardColor(MaterialTheme.colorScheme, translucency = translucency)
     }
 
     Box(modifier) {

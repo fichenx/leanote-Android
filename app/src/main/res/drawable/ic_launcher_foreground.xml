@@ -4,13 +4,23 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- 触角 -->
+    <path
+        android:pathData="M50,41.5 C46.5,36.5 43,33 38.5,31.8"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4.4"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M58,41.5 C61.5,36.5 65,33 69.5,31.8"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4.4"
+        android:strokeLineCap="round" />
+    <!-- 蚂蚁头部 -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,24 C69.5,33 78,46 75.5,62.5 C73.2,77 61,86 50,84.5 C39,83 30,72 32.5,57 C35,42 43,30 54,24 Z" />
-    <path
-        android:fillColor="#0B6B5D"
-        android:pathData="M52,40 C58,47 62,55 61,66 C60.4,71 58,75 55,78 C57,70 56,60 50,50 Z" />
+        android:pathData="M46.5,45.5 A7.5,7.5 0 0 1 61.5,45.5 L61.5,53.5 A2.5,2.5 0 0 1 59,56 L49,56 A2.5,2.5 0 0 1 46.5,53.5 Z" />
+    <!-- 铅笔笔身 -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M46,78 C51,69 55,59 57,48 L60,49 C58,60 54,70 49,80 Z" />
+        android:pathData="M47.5,57.8 L60.5,57.8 L60.5,69 L54,78 L47.5,69 Z" />
 </vector>

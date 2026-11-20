@@ -65,6 +65,8 @@ data class AppSettings(
     val palette: ThemePalette = ThemePalette.FOREST,
     val dynamicColor: Boolean = false,
     val surfaceEffect: SurfaceEffect = SurfaceEffect.NONE,
+    /** 材质透明强度，0–60，数值越大越透明。 */
+    val surfaceTranslucency: Int = 20,
     val customColors: Map<String, String> = emptyMap(),
     val autoSync: Boolean = true,
     val sortMode: SortMode = SortMode.UPDATED_DESC,

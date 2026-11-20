@@ -41,7 +41,7 @@ class AuthRepository @Inject constructor(
         var username = response.username
         var logo = ""
         runCatching { api.userInfo(response.userId, response.token) }.onSuccess {
-            if (it.ok) {
+            if (it.isValid) {
                 if (it.username.isNotBlank()) username = it.username
                 logo = it.logo
             }
@@ -94,8 +94,12 @@ class AuthRepository @Inject constructor(
     suspend fun refreshProfile(account: Account, forceAvatarRefresh: Boolean = false): Account? = withContext(Dispatchers.IO) {
         val info = runCatching {
             apiClient.api(account.host).userInfo(account.userId, account.token)
-        }.getOrNull() ?: return@withContext null
-        if (!info.ok) return@withContext null
+        }.getOrElse {
+            // 抛出具体原因，便于界面提示是网络不通、地址错误还是 token 失效。
+            throw ApiException("无法连接 ${account.host}：${it.message ?: "网络错误"}")
+        }
+        // /api/user/info 成功时不返回 Ok，只要带回了用户字段就算成功。
+        if (!info.isValid) return@withContext null
         val newLogo = info.logo.ifBlank { account.logo }
         val updated = account.copy(
             username = info.username.ifBlank { account.username },
@@ -147,7 +151,7 @@ class AuthRepository @Inject constructor(
             // 部分 Leanote 版本上传成功后只返回 Ok，不返回 Logo，需要再查一次用户信息。
             val info = runCatching {
                 apiClient.api(account.host).userInfo(account.userId, account.token)
-            }.getOrNull()?.takeIf { it.ok }
+            }.getOrNull()?.takeIf { it.isValid }
             val serverLogo = response.logo.ifBlank { info?.logo.orEmpty() }
             if (!response.ok && serverLogo.isBlank()) {
                 throw ApiException(response.msg?.takeIf { it.isNotBlank() } ?: "头像上传失败")

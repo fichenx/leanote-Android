@@ -93,6 +93,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.leanote.next.data.local.NoteEntity
 import com.leanote.next.data.model.SurfaceEffect
 import com.leanote.next.ui.theme.LocalSurfaceEffect
+import com.leanote.next.ui.theme.LocalSurfaceTranslucency
 import com.leanote.next.ui.theme.barColor
 import com.leanote.next.ui.theme.pageBrush
 import com.leanote.next.data.local.NotebookEntity
@@ -119,6 +120,7 @@ fun HomeScreen(
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
     val effect = LocalSurfaceEffect.current
+    val translucency = LocalSurfaceTranslucency.current
     val scheme = MaterialTheme.colorScheme
 
     var showNewSheet by remember { mutableStateOf(false) }
@@ -158,10 +160,23 @@ fun HomeScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
-                drawerContainerColor = effect.barColor(scheme),
+                // 不透明底色兜住状态栏区域，避免系统栏后面透出笔记列表。
+                drawerContainerColor = scheme.background,
                 drawerShape = MaterialTheme.shapes.extraLarge,
             ) {
-                HomeDrawerContent(
+                // 抽屉自带一层不透明的页面渐变，半透明材质叠在上面，
+                // 这样不会透出背后的笔记列表。
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(effect.pageBrush(scheme)),
+                ) {
+                    Box(
+                        Modifier
+                            .matchParentSize()
+                            .background(effect.barColor(scheme, translucency)),
+                    )
+                    HomeDrawerContent(
                     account = state.account,
                     notebooks = state.notebooks,
                     tags = state.tags,
@@ -206,7 +221,8 @@ fun HomeScreen(
                         scope.launch { drawerState.close() }
                         onOpenSettings()
                     },
-                )
+                    )
+                }
             }
         },
     ) {
@@ -336,7 +352,7 @@ fun HomeScreen(
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = effect.barColor(scheme),
+                            containerColor = effect.barColor(scheme, translucency),
                         ),
                     )
                     SearchField(

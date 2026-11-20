@@ -1,16 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <path android:pathData="M32,10 H76 A22,22 0 0 1 98,32 V76 A22,22 0 0 1 76,98 H32 A22,22 0 0 1 10,76 V32 A22,22 0 0 1 32,10 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="10"
+                android:startY="10"
+                android:endX="98"
+                android:endY="98">
+                <item android:offset="0" android:color="#FF18A38C" />
+                <item android:offset="1" android:color="#FF064E43" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- 触角 -->
     <path
-        android:fillColor="#0B6B5D"
-        android:pathData="M54,24 C69.5,33 78,46 75.5,62.5 C73.2,77 61,86 50,84.5 C39,83 30,72 32.5,57 C35,42 43,30 54,24 Z" />
+        android:pathData="M48.6,37.1 C43.9,30.4 39.1,25.6 32.9,24"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5.9"
+        android:strokeLineCap="round" />
     <path
-        android:fillColor="#FBFAF7"
-        android:pathData="M52,40 C58,47 62,55 61,66 C60.4,71 58,75 55,78 C57,70 56,60 50,50 Z" />
+        android:pathData="M59.4,37.1 C64.1,30.4 68.9,25.6 75.1,24"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5.9"
+        android:strokeLineCap="round" />
+    <!-- 蚂蚁头部 -->
     <path
-        android:fillColor="#0B6B5D"
-        android:pathData="M46,78 C51,69 55,59 57,48 L60,49 C58,60 54,70 49,80 Z" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M43.9,42.5 A10.1,10.1 0 0 1 64.1,42.5 L64.1,53.3 A3.4,3.4 0 0 1 60.8,56.7 L47.3,56.7 A3.4,3.4 0 0 1 43.9,53.3 Z" />
+    <!-- 铅笔笔身 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M45.2,59.1 L62.8,59.1 L62.8,74.3 L54,86.4 L45.2,74.3 Z" />
 </vector>

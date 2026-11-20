@@ -28,7 +28,15 @@ data class UserResponse(
     @SerialName("Email") val email: String = "",
     @SerialName("Verified") val verified: Boolean = false,
     @SerialName("Logo") val logo: String = "",
-)
+) {
+    /**
+     * Leanote 的 /api/user/info 成功时只返回用户字段，响应体里没有 Ok，
+     * 因此不能只看 ok 判断成败，有任意用户字段即视为成功。
+     */
+    val isValid: Boolean
+        get() = ok || userId.isNotBlank() || username.isNotBlank() ||
+            email.isNotBlank() || logo.isNotBlank()
+}
 
 @Serializable
 data class LogoResponse(

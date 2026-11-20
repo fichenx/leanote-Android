@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.leanote.next.data.model.AppSettings
@@ -32,6 +33,7 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
     private val paletteKey = stringPreferencesKey("theme_palette")
     private val dynamicKey = booleanPreferencesKey("dynamic_color")
     private val surfaceEffectKey = stringPreferencesKey("surface_effect")
+    private val surfaceTranslucencyKey = intPreferencesKey("surface_translucency")
     private val customColorsKey = stringPreferencesKey("custom_colors")
     private val autoSyncKey = booleanPreferencesKey("auto_sync")
     private val sortKey = stringPreferencesKey("sort_mode")
@@ -43,6 +45,7 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
             palette = runCatching { ThemePalette.valueOf(prefs[paletteKey] ?: "") }.getOrDefault(ThemePalette.FOREST),
             dynamicColor = prefs[dynamicKey] ?: false,
             surfaceEffect = runCatching { SurfaceEffect.valueOf(prefs[surfaceEffectKey] ?: "") }.getOrDefault(SurfaceEffect.NONE),
+            surfaceTranslucency = (prefs[surfaceTranslucencyKey] ?: 20).coerceIn(0, 60),
             customColors = decodeCustomColors(prefs[customColorsKey]),
             autoSync = prefs[autoSyncKey] ?: true,
             sortMode = runCatching { SortMode.valueOf(prefs[sortKey] ?: "") }.getOrDefault(SortMode.UPDATED_DESC),
@@ -57,6 +60,9 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
     suspend fun setDynamicColor(enabled: Boolean) = dataStore.edit { it[dynamicKey] = enabled }
 
     suspend fun setSurfaceEffect(effect: SurfaceEffect) = dataStore.edit { it[surfaceEffectKey] = effect.name }
+
+    suspend fun setSurfaceTranslucency(value: Int) =
+        dataStore.edit { it[surfaceTranslucencyKey] = value.coerceIn(0, 60) }
 
     suspend fun setCustomColor(role: String, hex: String?) {
         dataStore.edit { prefs ->

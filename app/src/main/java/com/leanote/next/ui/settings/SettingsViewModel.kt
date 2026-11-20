@@ -49,7 +49,7 @@ class SettingsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            accountStore.current()?.let { authRepository.refreshProfile(it) }
+            accountStore.current()?.let { runCatching { authRepository.refreshProfile(it) } }
         }
     }
 
@@ -85,6 +85,10 @@ class SettingsViewModel @Inject constructor(
         settingsStore.setSurfaceEffect(effect)
     }
 
+    fun setSurfaceTranslucency(value: Int) = viewModelScope.launch {
+        settingsStore.setSurfaceTranslucency(value)
+    }
+
     /** 手动从服务器拉取头像与用户名，解决其他端更换头像后本机不同步的问题。 */
     fun refreshProfile() {
         if (_refreshingProfile.value) return
@@ -95,11 +99,14 @@ class SettingsViewModel @Inject constructor(
                 return@launch
             }
             _refreshingProfile.value = true
-            val updated = runCatching { authRepository.refreshProfile(current, forceAvatarRefresh = true) }.getOrNull()
+            val result = runCatching { authRepository.refreshProfile(current, forceAvatarRefresh = true) }
             _refreshingProfile.value = false
+            val updated = result.getOrNull()
             messages.emit(
                 when {
-                    updated == null -> "无法连接服务器，头像同步失败"
+                    result.isFailure ->
+                        result.exceptionOrNull()?.message ?: "头像同步失败"
+                    updated == null -> "服务器未返回用户信息，请检查服务器地址或 token"
                     updated.logo.isBlank() -> "服务器尚未设置头像"
                     else -> "头像已从服务器同步"
                 },

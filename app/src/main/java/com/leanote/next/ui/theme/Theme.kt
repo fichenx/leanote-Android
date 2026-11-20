@@ -424,7 +424,10 @@ fun LeanoteTheme(settings: AppSettings, content: @Composable () -> Unit) {
             if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         else -> colorSchemeFor(settings.palette, dark)
     }
-    CompositionLocalProvider(LocalSurfaceEffect provides settings.surfaceEffect) {
+    CompositionLocalProvider(
+        LocalSurfaceEffect provides settings.surfaceEffect,
+        LocalSurfaceTranslucency provides settings.surfaceTranslucency,
+    ) {
         MaterialTheme(
             colorScheme = baseScheme.withCustomColors(settings.customColors),
             typography = typographyFor(settings.palette),
@@ -437,18 +440,33 @@ fun LeanoteTheme(settings: AppSettings, content: @Composable () -> Unit) {
 /** 当前界面材质效果，由主题统一提供。 */
 val LocalSurfaceEffect = staticCompositionLocalOf { SurfaceEffect.NONE }
 
+/** 当前材质透明强度（0–60），由主题统一提供。 */
+val LocalSurfaceTranslucency = staticCompositionLocalOf { 20 }
+
+/** 把透明强度换算成前景色 alpha：磨砂克制一些，亚克力更通透。 */
+private fun SurfaceEffect.materialAlpha(translucency: Int): Float {
+    val ratio = translucency.coerceIn(0, 60) / 100f
+    return when (this) {
+        SurfaceEffect.NONE -> 1f
+        SurfaceEffect.FROSTED -> 1f - ratio * 0.5f
+        SurfaceEffect.ACRYLIC -> 1f - ratio
+    }
+}
+
 /** 顶栏、侧边栏等大面积容器的底色。 */
-fun SurfaceEffect.barColor(scheme: ColorScheme): Color = when (this) {
+fun SurfaceEffect.barColor(scheme: ColorScheme, translucency: Int = 20): Color = when (this) {
     SurfaceEffect.NONE -> scheme.background
-    SurfaceEffect.FROSTED -> scheme.surface.copy(alpha = 0.88f)
-    SurfaceEffect.ACRYLIC -> scheme.surface.copy(alpha = 0.68f)
+    else -> scheme.surface.copy(alpha = materialAlpha(translucency))
 }
 
 /** 卡片底色，半透明后可以透出页面渐变，形成磨砂/亚克力观感。 */
-fun SurfaceEffect.cardColor(scheme: ColorScheme, base: Color = scheme.surfaceContainerLowest): Color = when (this) {
+fun SurfaceEffect.cardColor(
+    scheme: ColorScheme,
+    base: Color = scheme.surfaceContainerLowest,
+    translucency: Int = 20,
+): Color = when (this) {
     SurfaceEffect.NONE -> base
-    SurfaceEffect.FROSTED -> base.copy(alpha = 0.86f)
-    SurfaceEffect.ACRYLIC -> base.copy(alpha = 0.62f)
+    else -> base.copy(alpha = materialAlpha(translucency))
 }
 
 /** 页面背景渐变，材质效果关闭时保持纯色。 */

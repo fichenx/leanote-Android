@@ -73,6 +73,7 @@ import com.leanote.next.ui.components.TagRow
 import com.leanote.next.ui.theme.MonoFont
 import com.leanote.next.data.model.SurfaceEffect
 import com.leanote.next.ui.theme.LocalSurfaceEffect
+import com.leanote.next.ui.theme.LocalSurfaceTranslucency
 import com.leanote.next.ui.theme.barColor
 import com.leanote.next.ui.theme.pageBrush
 import com.leanote.next.ui.web.HtmlContent
@@ -98,6 +99,7 @@ fun NoteDetailScreen(
     var showAttachments by remember { mutableStateOf(false) }
     var fitToWidth by rememberSaveable { mutableStateOf(true) }
     val effect = LocalSurfaceEffect.current
+    val translucency = LocalSurfaceTranslucency.current
     val scheme = MaterialTheme.colorScheme
 
     val imageRepository = remember(context) {
@@ -228,7 +230,7 @@ fun NoteDetailScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = effect.barColor(scheme),
+                    containerColor = effect.barColor(scheme, translucency),
                 ),
             )
         },

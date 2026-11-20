@@ -37,6 +37,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -69,6 +70,7 @@ import com.leanote.next.data.model.ThemePalette
 import com.leanote.next.ui.components.AccountAvatar
 import com.leanote.next.ui.components.ConfirmDialog
 import com.leanote.next.ui.theme.LocalSurfaceEffect
+import com.leanote.next.ui.theme.LocalSurfaceTranslucency
 import com.leanote.next.ui.theme.cardColor
 import com.leanote.next.ui.theme.pageBrush
 
@@ -215,6 +217,29 @@ fun SettingsScreen(
                                 ),
                             )
                         }
+                    }
+                    if (settings.surfaceEffect != SurfaceEffect.NONE) {
+                        Spacer(Modifier.height(14.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("透明强度", style = MaterialTheme.typography.bodyLarge)
+                            Spacer(Modifier.weight(1f))
+                            Text(
+                                "${settings.surfaceTranslucency}%",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        Slider(
+                            value = settings.surfaceTranslucency.toFloat(),
+                            onValueChange = { viewModel.setSurfaceTranslucency(it.toInt()) },
+                            valueRange = 0f..60f,
+                            steps = 11,
+                        )
+                        Text(
+                            "数值越大越通透；抽屉与顶栏会垫一层页面底色，不会透出背后的笔记列表",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }
@@ -492,7 +517,11 @@ private fun AccountCard(
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     val effect = LocalSurfaceEffect.current
     Surface(
-        color = effect.cardColor(MaterialTheme.colorScheme, MaterialTheme.colorScheme.surfaceContainerLow),
+        color = effect.cardColor(
+            MaterialTheme.colorScheme,
+            MaterialTheme.colorScheme.surfaceContainerLow,
+            LocalSurfaceTranslucency.current,
+        ),
         shape = MaterialTheme.shapes.large,
         modifier = Modifier.fillMaxWidth(),
     ) {
