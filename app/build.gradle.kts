@@ -9,6 +9,13 @@ plugins {
 
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Properties
+
+/// 从根目录 keystore.properties 读取签名信息（不入库）
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
 
 android {
     namespace = "com.leanote.next"
@@ -18,10 +25,21 @@ android {
         applicationId = "com.leanote.next"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.2.0"
+        versionCode = 5
+        versionName = "1.2.1"
 
         vectorDrawables.useSupportLibrary = true
+    }
+
+    signingConfigs {
+        if (keystoreProps.isNotEmpty()) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -33,6 +51,9 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (keystoreProps.isNotEmpty()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
@@ -66,9 +87,11 @@ gradle.projectsEvaluated {
             task.doLast {
                 val tpl = SimpleDateFormat("yyyyMMddHHmm").format(Date())
                 val version = android.defaultConfig.versionName
-                println("[APK rename] version=$version tpl=$tpl")
+                // debug 版带 -debug 后缀，正式版带 -release 后缀
+                val label = if (task.name.endsWith("Debug")) "$version-debug" else "$version-release"
+                println("[APK rename] label=$label tpl=$tpl")
                 task.outputs.files.asFileTree.filter { it.extension == "apk" }.files.forEach { apk ->
-                    val target = File(apk.parentFile, "leanote_${version}_$tpl.apk")
+                    val target = File(apk.parentFile, "leanote_${label}_$tpl.apk")
                     println("[APK rename] ${apk.name} -> ${target.name}")
                     apk.copyTo(target, overwrite = true)
                 }

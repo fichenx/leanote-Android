@@ -18,3 +18,9 @@
 
 # Room
 -keep class * extends androidx.room.RoomDatabase
+
+# Markwon 可选解码器（SVG / GIF 未引入依赖，仅告警忽略）
+-dontwarn com.caverock.androidsvg.**
+-dontwarn pl.droidsonroids.gif.**
+-dontwarn io.noties.markwon.image.svg.**
+-dontwarn io.noties.markwon.image.gif.**

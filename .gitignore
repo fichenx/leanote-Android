@@ -11,4 +11,6 @@ captures/
 *.aab
 *.keystore
 *.jks
+keystore.properties
+keystore/
 screenshots/
