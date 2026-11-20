@@ -2,6 +2,7 @@ package com.leanote.next.data.remote
 
 import com.leanote.next.data.remote.dto.ApiBase
 import com.leanote.next.data.remote.dto.LoginResponse
+import com.leanote.next.data.remote.dto.LogoResponse
 import com.leanote.next.data.remote.dto.NoteDto
 import com.leanote.next.data.remote.dto.NotebookDto
 import com.leanote.next.data.remote.dto.SyncStateResponse
@@ -45,6 +46,13 @@ interface LeanoteApi {
 
     @GET("user/getSyncState")
     suspend fun syncState(@Query("token") token: String): SyncStateResponse
+
+    @Multipart
+    @POST("user/updateLogo")
+    suspend fun updateLogo(
+        @Part file: MultipartBody.Part,
+        @Query("token") token: String,
+    ): LogoResponse
 
     @GET("notebook/getSyncNotebooks")
     suspend fun syncNotebooks(

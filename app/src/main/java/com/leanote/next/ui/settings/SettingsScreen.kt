@@ -1,10 +1,16 @@
 package com.leanote.next.ui.settings
 
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Logout
+import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
@@ -46,6 +53,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -55,6 +64,7 @@ import com.leanote.next.BuildConfig
 import com.leanote.next.data.model.Account
 import com.leanote.next.data.model.SortMode
 import com.leanote.next.data.model.ThemeMode
+import com.leanote.next.data.model.ThemePalette
 import com.leanote.next.ui.components.AccountAvatar
 import com.leanote.next.ui.components.ConfirmDialog
 
@@ -68,8 +78,12 @@ fun SettingsScreen(
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val account by viewModel.account.collectAsStateWithLifecycle()
     val syncing by viewModel.syncing.collectAsStateWithLifecycle()
+    val uploadingAvatar by viewModel.uploadingAvatar.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var confirmLogout by remember { mutableStateOf(false) }
+    val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { viewModel.uploadAvatar(it) }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.messages.collect { snackbar.showSnackbar(it) }
@@ -103,7 +117,15 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             account?.let { current ->
-                item { AccountCard(current, syncing, onSync = viewModel::syncNow) }
+                item {
+                    AccountCard(
+                        account = current,
+                        syncing = syncing,
+                        uploadingAvatar = uploadingAvatar,
+                        onSync = viewModel::syncNow,
+                        onPickAvatar = { avatarPicker.launch("image/*") },
+                    )
+                }
             }
 
             item { SectionTitle("外观") }
@@ -136,6 +158,14 @@ fun SettingsScreen(
                             )
                         }
                     }
+                    Spacer(Modifier.height(14.dp))
+                    SettingLabel("配色方案", "深色模式使用柔和的深灰背景，不再是纯黑")
+                    Spacer(Modifier.height(8.dp))
+                    ThemePaletteChips(
+                        selected = settings.palette,
+                        enabled = !settings.dynamicColor,
+                        onSelect = viewModel::setPalette,
+                    )
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         Spacer(Modifier.height(8.dp))
                         ToggleRow(
@@ -238,8 +268,57 @@ fun SettingsScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AccountCard(account: Account, syncing: Boolean, onSync: () -> Unit) {
+private fun ThemePaletteChips(
+    selected: ThemePalette,
+    enabled: Boolean,
+    onSelect: (ThemePalette) -> Unit,
+) {
+    val items = listOf(
+        ThemePalette.FOREST to ("森野绿" to Color(0xFF0B6B5D)),
+        ThemePalette.OCEAN to ("海洋蓝" to Color(0xFF1565C0)),
+        ThemePalette.LAVENDER to ("薰衣草" to Color(0xFF6D4FA3)),
+        ThemePalette.SUNSET to ("日落橙" to Color(0xFFB04E22)),
+        ThemePalette.GRAPHITE to ("石墨灰" to Color(0xFF4E635E)),
+    )
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.forEach { (palette, pair) ->
+            val (label, color) = pair
+            AssistChip(
+                onClick = { if (enabled) onSelect(palette) },
+                enabled = enabled,
+                label = { Text(label) },
+                leadingIcon = {
+                    Box(
+                        Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(color),
+                    )
+                },
+                shape = CircleShape,
+                border = null,
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = if (selected == palette) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+                ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AccountCard(
+    account: Account,
+    syncing: Boolean,
+    uploadingAvatar: Boolean,
+    onSync: () -> Unit,
+    onPickAvatar: () -> Unit,
+) {
     Surface(
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
         shape = MaterialTheme.shapes.large,
@@ -247,8 +326,27 @@ private fun AccountCard(account: Account, syncing: Boolean, onSync: () -> Unit) 
     ) {
         Column(Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AccountAvatar(account, size = 46.dp)
-                Spacer(Modifier.width(12.dp))
+                Box(
+                    contentAlignment = Alignment.BottomEnd,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable(enabled = !uploadingAvatar, onClick = onPickAvatar),
+                ) {
+                    AccountAvatar(account, size = 56.dp)
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = CircleShape,
+                        modifier = Modifier.size(22.dp),
+                    ) {
+                        Icon(
+                            Icons.Rounded.PhotoCamera,
+                            contentDescription = "更换头像",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.padding(4.dp),
+                        )
+                    }
+                }
+                Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
                         account.displayName,
@@ -263,6 +361,15 @@ private fun AccountCard(account: Account, syncing: Boolean, onSync: () -> Unit) 
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        if (uploadingAvatar) "正在上传头像…" else "点击头像可更换",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                if (uploadingAvatar) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -274,14 +381,22 @@ private fun AccountCard(account: Account, syncing: Boolean, onSync: () -> Unit) 
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(14.dp))
-            OutlinedButton(onClick = onSync, enabled = !syncing) {
-                if (syncing) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                } else {
-                    Icon(Icons.Rounded.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(onClick = onSync, enabled = !syncing) {
+                    if (syncing) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Rounded.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (syncing) "同步中…" else "立即同步")
                 }
                 Spacer(Modifier.width(8.dp))
-                Text(if (syncing) "同步中…" else "立即同步")
+                TextButton(onClick = onPickAvatar, enabled = !uploadingAvatar) {
+                    Icon(Icons.Rounded.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (uploadingAvatar) "上传中…" else "更换头像")
+                }
             }
         }
     }

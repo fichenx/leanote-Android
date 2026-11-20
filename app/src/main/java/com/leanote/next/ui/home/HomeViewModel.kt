@@ -10,6 +10,7 @@ import com.leanote.next.data.model.NoteFilter
 import com.leanote.next.data.model.SortMode
 import com.leanote.next.data.prefs.AccountStore
 import com.leanote.next.data.prefs.SettingsStore
+import com.leanote.next.data.repo.AuthRepository
 import com.leanote.next.data.repo.NoteRepository
 import com.leanote.next.data.repo.NotebookRepository
 import com.leanote.next.data.sync.SyncEngine
@@ -57,6 +58,7 @@ class HomeViewModel @Inject constructor(
     private val noteRepository: NoteRepository,
     private val settingsStore: SettingsStore,
     private val syncEngine: SyncEngine,
+    private val authRepository: AuthRepository,
     @ApplicationContext private val appContext: android.content.Context,
 ) : ViewModel() {
 
@@ -172,6 +174,7 @@ class HomeViewModel @Inject constructor(
             syncing.value = true
             val summary = syncEngine.sync()
             syncing.value = false
+            accountStore.current()?.let { authRepository.refreshProfile(it) }
             WidgetUpdater.refresh(appContext)
             if (!silent || !summary.success) {
                 val message = if (summary.success) {

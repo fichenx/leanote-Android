@@ -22,8 +22,16 @@ data class Account(
     val displayName: String get() = username.ifBlank { email.substringBefore('@') }
 
     fun avatarUrl(): String? {
-        if (logo.isBlank()) return null
-        return if (logo.startsWith("http")) logo else host.trimEnd('/') + "/" + logo.trimStart('/')
+        val raw = logo.trim()
+        if (raw.isBlank()) return null
+        if (raw.startsWith("http://") || raw.startsWith("https://")) return raw
+        val path = raw.trimStart('/')
+        // 旧版网页端上传头像时只保存 fileId，需要通过文件接口读取。
+        return if (Regex("^[a-fA-F0-9]{24}$").matches(path)) {
+            host.trimEnd('/') + "/api/file/getImage?fileId=$path&token=$token"
+        } else {
+            host.trimEnd('/') + "/" + path
+        }
     }
 
     fun blogUrl(): String {
@@ -34,10 +42,14 @@ data class Account(
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
+/** 应用配色方案。 */
+enum class ThemePalette { FOREST, OCEAN, LAVENDER, SUNSET, GRAPHITE }
+
 enum class SortMode { UPDATED_DESC, UPDATED_ASC, CREATED_DESC, TITLE_ASC }
 
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val palette: ThemePalette = ThemePalette.FOREST,
     val dynamicColor: Boolean = false,
     val autoSync: Boolean = true,
     val sortMode: SortMode = SortMode.UPDATED_DESC,

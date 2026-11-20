@@ -31,6 +31,13 @@ data class UserResponse(
 )
 
 @Serializable
+data class LogoResponse(
+    @SerialName("Ok") val ok: Boolean = true,
+    @SerialName("Msg") val msg: String? = null,
+    @SerialName("Logo") val logo: String = "",
+)
+
+@Serializable
 data class SyncStateResponse(
     @SerialName("Ok") val ok: Boolean = false,
     @SerialName("Msg") val msg: String? = null,

@@ -98,7 +98,6 @@ fun HtmlContent(
     fitToWidth: Boolean = true,
 ) {
     val context = LocalContext.current
-    val isDark = MaterialTheme.colorScheme.background.toArgb() == AndroidColor.parseColor("#0F1413")
     val bg = MaterialTheme.colorScheme.background.toArgb()
     val fg = MaterialTheme.colorScheme.onSurface.toArgb()
     val link = MaterialTheme.colorScheme.primary.toArgb()
@@ -176,18 +175,32 @@ internal fun buildHtmlDocument(
     fitToWidth: Boolean = true,
 ): String {
     fun hex(color: Int) = String.format("#%06X", 0xFFFFFF and color)
-    val layout = if (fitToWidth) {
+    val fitCss = if (fitToWidth) {
         """
           html, body { overflow-x: hidden; }
-          body { max-width: 100%; overflow-wrap: anywhere; }
+          body, body * { font-family: -apple-system, "Noto Sans SC", "PingFang SC", Roboto, sans-serif !important; }
+          body {
+            max-width: 100%; overflow-wrap: anywhere; font-size: 16px !important;
+            line-height: 1.9 !important; letter-spacing: 0.1px; padding: 6px 18px 56px 18px !important;
+            color: ${hex(foreground)} !important;
+          }
+          p, div, span, li, td, th, blockquote { font-size: inherit; }
+          h1, h2, h3, h4, h5, h6 { color: ${hex(foreground)} !important; margin: 1.4em 0 0.7em !important; }
+          h1 { font-size: 23px !important; } h2 { font-size: 20px !important; }
+          h3 { font-size: 18px !important; } h4 { font-size: 16.5px !important; }
+          h5, h6 { font-size: 15px !important; }
           img, video, iframe { max-width: 100% !important; height: auto !important; }
-          table { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-          pre { overflow-x: auto; white-space: pre; }
+          img { display: block; margin: 16px auto !important; border-radius: 12px; }
+          table { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
+                  font-size: 14px !important; }
+          pre { overflow-x: auto; white-space: pre-wrap !important; word-break: break-word; }
+          pre, code { font-size: 13.5px !important; }
+          blockquote { margin: 16px 0 !important; padding: 8px 14px !important; }
         """
     } else {
         """
           html, body { overflow-x: auto; }
-          body { width: max-content; min-width: 100%; }
+          body { width: max-content; min-width: calc(100% - 36px); padding: 6px 18px 56px 18px; }
           img, video, iframe { max-width: none !important; }
           table { white-space: nowrap; }
           pre { white-space: pre; }
@@ -200,14 +213,14 @@ internal fun buildHtmlDocument(
         <style>
           html, body { margin: 0; padding: 0; background: ${hex(background)}; color: ${hex(foreground)}; }
           body { font-family: -apple-system, "Noto Sans SC", "PingFang SC", Roboto, sans-serif;
-                 font-size: 17px; line-height: 1.78; padding: 4px 0 48px 0;
+                 font-size: 17px; line-height: 1.78; padding: 6px 18px 56px 18px;
                  -webkit-font-smoothing: antialiased; word-wrap: break-word; }
           p { margin: 0 0 16px 0; }
           h1, h2, h3, h4 { line-height: 1.35; margin: 24px 0 12px; font-weight: 600; }
           h1 { font-size: 26px; } h2 { font-size: 22px; } h3 { font-size: 19px; }
           h4 { font-size: 17px; }
           a { color: ${hex(link)}; text-decoration: none; }
-          img { height: auto; border-radius: 12px; display: block; margin: 12px 0; }
+          img { height: auto; border-radius: 12px; display: block; margin: 12px auto; }
           blockquote { margin: 16px 0; padding: 6px 16px; border-left: 3px solid ${hex(link)};
                        color: ${hex(quote)}; background: ${hex(codeBg)}55; border-radius: 0 8px 8px 0; }
           pre, code { font-family: "JetBrains Mono", Menlo, Consolas, monospace; font-size: 14px; }
@@ -222,7 +235,7 @@ internal fun buildHtmlDocument(
           li { margin: 4px 0; }
           iframe, video { border-radius: 12px; }
           .leanote-image-wrapper { margin: 12px 0; }
-          $layout
+          $fitCss
         </style>
         </head><body>$body</body></html>
     """.trimIndent()

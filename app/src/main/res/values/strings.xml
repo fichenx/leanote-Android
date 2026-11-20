@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Leanote Next</string>
-    <string name="widget_name">Leanote 最近笔记</string>
+    <string name="app_name">蚂蚁笔记</string>
+    <string name="widget_name">蚂蚁笔记 · 最近笔记</string>
     <string name="widget_description">快速查看并打开最近的笔记</string>
 </resources>

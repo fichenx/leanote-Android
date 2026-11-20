@@ -10,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.leanote.next.data.model.AppSettings
 import com.leanote.next.data.model.SortMode
 import com.leanote.next.data.model.ThemeMode
+import com.leanote.next.data.model.ThemePalette
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -24,6 +25,7 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
     private val dataStore = context.settingsDataStore
 
     private val themeKey = stringPreferencesKey("theme_mode")
+    private val paletteKey = stringPreferencesKey("theme_palette")
     private val dynamicKey = booleanPreferencesKey("dynamic_color")
     private val autoSyncKey = booleanPreferencesKey("auto_sync")
     private val sortKey = stringPreferencesKey("sort_mode")
@@ -32,6 +34,7 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
     val settings: Flow<AppSettings> = dataStore.data.map { prefs ->
         AppSettings(
             themeMode = runCatching { ThemeMode.valueOf(prefs[themeKey] ?: "") }.getOrDefault(ThemeMode.SYSTEM),
+            palette = runCatching { ThemePalette.valueOf(prefs[paletteKey] ?: "") }.getOrDefault(ThemePalette.FOREST),
             dynamicColor = prefs[dynamicKey] ?: false,
             autoSync = prefs[autoSyncKey] ?: true,
             sortMode = runCatching { SortMode.valueOf(prefs[sortKey] ?: "") }.getOrDefault(SortMode.UPDATED_DESC),
@@ -40,6 +43,8 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
     }
 
     suspend fun setThemeMode(mode: ThemeMode) = dataStore.edit { it[themeKey] = mode.name }
+
+    suspend fun setPalette(palette: ThemePalette) = dataStore.edit { it[paletteKey] = palette.name }
 
     suspend fun setDynamicColor(enabled: Boolean) = dataStore.edit { it[dynamicKey] = enabled }
 

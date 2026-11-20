@@ -1,10 +1,12 @@
 package com.leanote.next.ui.settings
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.leanote.next.data.model.AppSettings
 import com.leanote.next.data.model.SortMode
 import com.leanote.next.data.model.ThemeMode
+import com.leanote.next.data.model.ThemePalette
 import com.leanote.next.data.prefs.AccountStore
 import com.leanote.next.data.prefs.SettingsStore
 import com.leanote.next.data.repo.AuthRepository
@@ -35,11 +37,40 @@ class SettingsViewModel @Inject constructor(
     private val _syncing = MutableStateFlow(false)
     val syncing = _syncing.asStateFlow()
 
+    private val _uploadingAvatar = MutableStateFlow(false)
+    val uploadingAvatar = _uploadingAvatar.asStateFlow()
+
     val messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val loggedOut = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
+    init {
+        viewModelScope.launch {
+            accountStore.current()?.let { authRepository.refreshProfile(it) }
+        }
+    }
+
     fun setThemeMode(mode: ThemeMode) = viewModelScope.launch {
         settingsStore.setThemeMode(mode)
+    }
+
+    fun setPalette(palette: ThemePalette) = viewModelScope.launch {
+        settingsStore.setPalette(palette)
+    }
+
+    fun uploadAvatar(uri: Uri) {
+        if (_uploadingAvatar.value) return
+        viewModelScope.launch {
+            val current = accountStore.current()
+            if (current == null) {
+                messages.emit("请先登录账户")
+                return@launch
+            }
+            _uploadingAvatar.value = true
+            runCatching { authRepository.uploadAvatar(current, uri) }
+                .onSuccess { messages.emit("头像已更新") }
+                .onFailure { messages.emit(it.message ?: "头像上传失败") }
+            _uploadingAvatar.value = false
+        }
     }
 
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch {
