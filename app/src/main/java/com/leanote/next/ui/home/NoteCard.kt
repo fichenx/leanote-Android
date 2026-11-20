@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,19 +34,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.leanote.next.data.local.NoteEntity
+import com.leanote.next.data.model.Account
+import com.leanote.next.data.repo.ImageRepository
 import com.leanote.next.ui.components.NoteMetaLine
 import com.leanote.next.ui.components.TagRow
 import com.leanote.next.ui.components.notePreview
+import dagger.hilt.android.EntryPointAccessors
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun NoteCard(
     note: NoteEntity,
     notebookName: String?,
+    account: Account?,
     selected: Boolean = false,
     onClick: () -> Unit,
     onEdit: () -> Unit,
@@ -55,6 +63,19 @@ fun NoteCard(
     modifier: Modifier = Modifier,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val images = remember(context) {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            ThumbnailEntryPoint::class.java,
+        ).imageRepository()
+    }
+    var thumbnail by remember(note.localId) { mutableStateOf<Any?>(null) }
+
+    LaunchedEffect(note.localId, note.content, account?.id) {
+        thumbnail = runCatching { images.thumbnailModel(note.content, account) }.getOrNull()
+    }
+
     val container = if (selected) {
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
     } else {
@@ -76,7 +97,7 @@ fun NoteCard(
                 .clip(MaterialTheme.shapes.large)
                 .combinedClickable(onClick = onClick, onLongClick = { menuOpen = true }),
         ) {
-            Column(Modifier.padding(start = 18.dp, end = 10.dp, top = 15.dp, bottom = 14.dp)) {
+            Column(Modifier.padding(start = 18.dp, end = 8.dp, top = 12.dp, bottom = 14.dp)) {
                 Row(verticalAlignment = Alignment.Top) {
                     Column(Modifier.weight(1f)) {
                         Text(
@@ -95,36 +116,52 @@ fun NoteCard(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    Box {
-                        IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(32.dp)) {
-                            Icon(
-                                Icons.Rounded.MoreHoriz,
-                                contentDescription = "更多",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                    Column(horizontalAlignment = Alignment.End) {
+                        Box {
+                            IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(30.dp)) {
+                                Icon(
+                                    Icons.Rounded.MoreHoriz,
+                                    contentDescription = "更多",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                                DropdownMenuItem(text = { Text("编辑") }, onClick = {
+                                    menuOpen = false
+                                    onEdit()
+                                })
+                                if (onRestore != null) {
+                                    DropdownMenuItem(text = { Text("恢复到笔记本") }, onClick = {
+                                        menuOpen = false
+                                        onRestore()
+                                    })
+                                }
+                                if (onDeleteForever != null) {
+                                    DropdownMenuItem(text = { Text("永久删除") }, onClick = {
+                                        menuOpen = false
+                                        onDeleteForever()
+                                    })
+                                } else {
+                                    DropdownMenuItem(text = { Text("移至回收站") }, onClick = {
+                                        menuOpen = false
+                                        onTrash()
+                                    })
+                                }
+                            }
                         }
-                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            DropdownMenuItem(text = { Text("编辑") }, onClick = {
-                                menuOpen = false
-                                onEdit()
-                            })
-                            if (onRestore != null) {
-                                DropdownMenuItem(text = { Text("恢复到笔记本") }, onClick = {
-                                    menuOpen = false
-                                    onRestore()
-                                })
-                            }
-                            if (onDeleteForever != null) {
-                                DropdownMenuItem(text = { Text("永久删除") }, onClick = {
-                                    menuOpen = false
-                                    onDeleteForever()
-                                })
-                            } else {
-                                DropdownMenuItem(text = { Text("移至回收站") }, onClick = {
-                                    menuOpen = false
-                                    onTrash()
-                                })
-                            }
+                        if (thumbnail != null) {
+                            Spacer(Modifier.height(2.dp))
+                            AsyncImage(
+                                model = thumbnail,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .padding(end = 4.dp)
+                                    .size(64.dp)
+                                    .clip(MaterialTheme.shapes.medium)
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                contentScale = ContentScale.Crop,
+                            )
                         }
                     }
                 }
@@ -178,4 +215,10 @@ fun NoteCard(
             }
         }
     }
+}
+
+@dagger.hilt.EntryPoint
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+interface ThumbnailEntryPoint {
+    fun imageRepository(): ImageRepository
 }

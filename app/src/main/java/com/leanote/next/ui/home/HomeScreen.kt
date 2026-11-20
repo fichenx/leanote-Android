@@ -81,6 +81,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -108,6 +109,7 @@ fun HomeScreen(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     var showNewSheet by remember { mutableStateOf(false) }
     var showAccountSheet by remember { mutableStateOf(false) }
@@ -162,6 +164,24 @@ fun HomeScreen(
                     onAddNotebook = { showCreateNotebook = true },
                     onNotebookMenu = { notebookMenuTarget = it },
                     onSwitchAccount = { showAccountSheet = true },
+                    onOpenBlog = {
+                        val account = state.account
+                        if (account == null) {
+                            scope.launch { snackbar.showSnackbar("请先登录账户") }
+                        } else {
+                            scope.launch { drawerState.close() }
+                            runCatching {
+                                context.startActivity(
+                                    android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse(account.blogUrl()),
+                                    ),
+                                )
+                            }.onFailure {
+                                scope.launch { snackbar.showSnackbar("无法打开博客页面") }
+                            }
+                        }
+                    },
                     onSettings = {
                         scope.launch { drawerState.close() }
                         onOpenSettings()
@@ -201,6 +221,11 @@ fun HomeScreen(
                             }
                         },
                         actions = {
+                            state.account?.let { account ->
+                                IconButton(onClick = { showAccountSheet = true }) {
+                                    AccountAvatar(account, size = 30.dp)
+                                }
+                            }
                             IconButton(onClick = { viewModel.sync() }, enabled = !state.syncing) {
                                 if (state.syncing) {
                                     CircularProgressIndicator(
@@ -354,6 +379,7 @@ fun HomeScreen(
                                     NoteCard(
                                         note = note,
                                         notebookName = state.notebookName(note.notebookServerId),
+                                        account = state.account,
                                         onClick = { onOpenNote(note.localId) },
                                         onEdit = { onEditNote(note.localId) },
                                         onTrash = { viewModel.moveToTrash(note) },

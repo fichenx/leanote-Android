@@ -9,6 +9,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,27 +29,39 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.CloudDone
 import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.FormatAlignCenter
+import androidx.compose.material.icons.rounded.FormatAlignLeft
+import androidx.compose.material.icons.rounded.FormatAlignRight
 import androidx.compose.material.icons.rounded.FormatBold
+import androidx.compose.material.icons.rounded.FormatColorText
 import androidx.compose.material.icons.rounded.FormatItalic
 import androidx.compose.material.icons.rounded.FormatListBulleted
 import androidx.compose.material.icons.rounded.FormatListNumbered
 import androidx.compose.material.icons.rounded.FormatQuote
 import androidx.compose.material.icons.rounded.FormatStrikethrough
 import androidx.compose.material.icons.rounded.FormatUnderlined
+import androidx.compose.material.icons.rounded.Highlight
+import androidx.compose.material.icons.rounded.HorizontalRule
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Notes
+import androidx.compose.material.icons.rounded.Redo
+import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material.icons.rounded.Title
+import androidx.compose.material.icons.rounded.Undo
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -68,12 +82,14 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextRange
@@ -113,7 +129,120 @@ fun EditorScreen(
     var showInfo by remember { mutableStateOf(false) }
     var showLinkDialog by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var colorMode by remember { mutableStateOf<String?>(null) }
     var markdownValue by remember(localId) { mutableStateOf(TextFieldValue("")) }
+
+    val undoStack = remember(localId) { mutableStateListOf<TextFieldValue>() }
+    val redoStack = remember(localId) { mutableStateListOf<TextFieldValue>() }
+
+    fun applyMarkdown(value: TextFieldValue) {
+        if (value.text == markdownValue.text && value.selection == markdownValue.selection) return
+        if (undoStack.size >= 120) undoStack.removeAt(0)
+        undoStack.add(markdownValue)
+        redoStack.clear()
+        markdownValue = value
+        viewModel.updateContent(value.text)
+    }
+
+    fun undoMarkdown() {
+        if (undoStack.isEmpty()) return
+        redoStack.add(markdownValue)
+        markdownValue = undoStack.removeAt(undoStack.lastIndex)
+        viewModel.updateContent(markdownValue.text)
+    }
+
+    fun redoMarkdown() {
+        if (redoStack.isEmpty()) return
+        undoStack.add(markdownValue)
+        markdownValue = redoStack.removeAt(redoStack.lastIndex)
+        viewModel.updateContent(markdownValue.text)
+    }
+
+    fun runMarkdown(command: String, value: String?) {
+        when (command) {
+            "undo" -> {
+                undoMarkdown()
+                return
+            }
+            "redo" -> {
+                redoMarkdown()
+                return
+            }
+        }
+        val next = when (command) {
+            "bold" -> markdownValue.wrapSelection("**", "**", "粗体")
+            "italic" -> markdownValue.wrapSelection("_", "_", "斜体")
+            "underline" -> markdownValue.wrapSelection("<u>", "</u>", "下划线")
+            "strike" -> markdownValue.wrapSelection("~~", "~~", "删除线")
+            "code" -> markdownValue.wrapSelection("`", "`", "代码")
+            "color" -> markdownValue.wrapSelection(
+                "<font color=\"${value ?: "#E53935"}\">",
+                "</font>",
+                "彩色文字",
+            )
+            "highlight" -> markdownValue.wrapSelection(
+                "<mark style=\"background-color:${value ?: "#FFF59D"}\">",
+                "</mark>",
+                "高亮文字",
+            )
+            "heading" -> markdownValue.setHeading(value ?: "p")
+            "ul" -> markdownValue.toggleLinePrefix("- ")
+            "ol" -> markdownValue.toggleLinePrefix("1. ")
+            "task" -> markdownValue.toggleLinePrefix("- [ ] ")
+            "quote" -> markdownValue.toggleLinePrefix("> ")
+            "codeblock" -> markdownValue.insertWrappedBlock("\n```\n", "\n```\n")
+            "hr" -> markdownValue.insertAtCursor("\n\n---\n\n")
+            "table" -> markdownValue.insertAtCursor(MARKDOWN_TABLE)
+            "link" -> {
+                showLinkDialog = true
+                return
+            }
+            else -> markdownValue
+        }
+        applyMarkdown(next)
+    }
+
+    fun runRich(command: String, value: String?) {
+        when (command) {
+            "table" -> richController.insertHtml(RICH_TABLE_HTML)
+            "codeblock" -> richController.insertHtml("<pre><br></pre><p><br></p>")
+            "task" -> richController.exec("insertUnorderedList")
+            "link" -> {
+                richController.exec("createLink", "https://")
+                return
+            }
+            else -> {
+                val js = when (command) {
+                    "bold" -> "bold"
+                    "italic" -> "italic"
+                    "underline" -> "underline"
+                    "strike" -> "strikeThrough"
+                    "heading" -> "formatBlock"
+                    "ul" -> "insertUnorderedList"
+                    "ol" -> "insertOrderedList"
+                    "quote" -> "formatBlock"
+                    "code" -> "formatBlock"
+                    "color" -> "foreColor"
+                    "highlight" -> "hiliteColor"
+                    "alignLeft" -> "justifyLeft"
+                    "alignCenter" -> "justifyCenter"
+                    "alignRight" -> "justifyRight"
+                    "hr" -> "insertHorizontalRule"
+                    "undo" -> "undo"
+                    "redo" -> "redo"
+                    else -> null
+                }
+                if (js != null) {
+                    val arg = when (command) {
+                        "quote" -> "<blockquote>"
+                        "code" -> "<pre>"
+                        else -> value
+                    }
+                    richController.exec(js, arg)
+                }
+            }
+        }
+    }
 
     val images = remember(context) {
         EntryPointAccessors.fromApplication(
@@ -130,6 +259,8 @@ fun EditorScreen(
     LaunchedEffect(state.loading, state.note?.localId) {
         if (!state.loading && state.note != null) {
             markdownValue = TextFieldValue(state.content, TextRange(state.content.length))
+            undoStack.clear()
+            redoStack.clear()
         }
     }
     LaunchedEffect(Unit) {
@@ -141,8 +272,7 @@ fun EditorScreen(
     LaunchedEffect(Unit) {
         viewModel.insertImageRequests.collect { ref ->
             if (viewModel.state.value.isMarkdown) {
-                markdownValue = markdownValue.insertAtCursor("![]($ref)")
-                viewModel.updateContent(markdownValue.text)
+                applyMarkdown(markdownValue.insertAtCursor("![]($ref)"))
             } else {
                 richController.insertImage(ref.replace(LOCAL_IMAGE_PREFIX, WEB_IMAGE_PREFIX))
             }
@@ -197,58 +327,16 @@ fun EditorScreen(
             )
         },
         bottomBar = {
-            if (!showPreview) {
-                EditorToolbar(
-                    isMarkdown = state.isMarkdown,
-                    onCommand = { command, value ->
-                        if (state.isMarkdown) {
-                            markdownValue = when (command) {
-                                "bold" -> markdownValue.wrapSelection("**", "**", "粗体")
-                                "italic" -> markdownValue.wrapSelection("_", "_", "斜体")
-                                "strike" -> markdownValue.wrapSelection("~~", "~~", "删除线")
-                                "code" -> markdownValue.wrapSelection("`", "`", "代码")
-                                "h1" -> markdownValue.toggleLinePrefix("# ")
-                                "h2" -> markdownValue.toggleLinePrefix("## ")
-                                "ul" -> markdownValue.toggleLinePrefix("- ")
-                                "ol" -> markdownValue.toggleLinePrefix("1. ")
-                                "quote" -> markdownValue.toggleLinePrefix("> ")
-                                "link" -> markdownValue.wrapSelection("[", "](https://)", "链接")
-                                else -> markdownValue
-                            }
-                            viewModel.updateContent(markdownValue.text)
-                        } else {
-                            val js = when (command) {
-                                "bold" -> "bold"
-                                "italic" -> "italic"
-                                "underline" -> "underline"
-                                "strike" -> "strikeThrough"
-                                "h2" -> "formatBlock"
-                                "ul" -> "insertUnorderedList"
-                                "ol" -> "insertOrderedList"
-                                "quote" -> "formatBlock"
-                                "link" -> "createLink"
-                                else -> null
-                            }
-                            if (js != null) richController.exec(js, value)
-                        }
-                    },
-                    onImage = { pickImage.launch("image/*") },
-                    onLink = {
-                        if (state.isMarkdown) showLinkDialog = true
-                        else richController.exec("createLink", "https://")
-                    },
-                    onTogglePreview = { showPreview = true },
-                )
-            } else {
-                EditorToolbar(
-                    isMarkdown = true,
-                    previewMode = true,
-                    onCommand = { _, _ -> },
-                    onImage = {},
-                    onLink = {},
-                    onTogglePreview = { showPreview = false },
-                )
-            }
+            EditorToolbar(
+                isMarkdown = state.isMarkdown,
+                previewMode = showPreview,
+                onCommand = { command, value ->
+                    if (state.isMarkdown) runMarkdown(command, value) else runRich(command, value)
+                },
+                onImage = { pickImage.launch("image/*") },
+                onColor = { colorMode = it },
+                onTogglePreview = { showPreview = !showPreview },
+            )
         },
     ) { padding ->
         when {
@@ -283,10 +371,7 @@ fun EditorScreen(
 
                     state.isMarkdown -> MarkdownEditor(
                         value = markdownValue,
-                        onValueChange = {
-                            markdownValue = it
-                            viewModel.updateContent(it.text)
-                        },
+                        onValueChange = { applyMarkdown(it) },
                         modifier = Modifier.fillMaxSize(),
                     )
 
@@ -335,12 +420,22 @@ fun EditorScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showLinkDialog = false
-                    markdownValue = markdownValue.wrapSelection("[", "]($url)", "链接")
-                    viewModel.updateContent(markdownValue.text)
+                    applyMarkdown(markdownValue.wrapSelection("[", "]($url)", "链接"))
                 }) { Text("插入") }
             },
             dismissButton = {
                 TextButton(onClick = { showLinkDialog = false }) { Text("取消") }
+            },
+        )
+    }
+
+    colorMode?.let { mode ->
+        EditorColorDialog(
+            mode = mode,
+            onDismiss = { colorMode = null },
+            onPick = { hex ->
+                colorMode = null
+                if (state.isMarkdown) runMarkdown(mode, hex) else runRich(mode, hex)
             },
         )
     }
@@ -481,54 +576,122 @@ private fun MarkdownEditor(
 @Composable
 private fun EditorToolbar(
     isMarkdown: Boolean,
+    previewMode: Boolean,
     onCommand: (String, String?) -> Unit,
     onImage: () -> Unit,
-    onLink: () -> Unit,
+    onColor: (String) -> Unit,
     onTogglePreview: () -> Unit,
-    previewMode: Boolean = false,
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 2.dp,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .navigationBarsPadding()
-                .padding(horizontal = 6.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (previewMode) {
+        if (previewMode) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 ToolbarAction(Icons.Rounded.VisibilityOff, "退出预览", onTogglePreview)
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(6.dp))
                 Text(
                     "Markdown 预览",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            } else {
-                ToolbarAction(Icons.Rounded.FormatBold, "加粗") { onCommand("bold", null) }
-                ToolbarAction(Icons.Rounded.FormatItalic, "斜体") { onCommand("italic", null) }
-                if (isMarkdown) {
-                    ToolbarAction(Icons.Rounded.FormatStrikethrough, "删除线") { onCommand("strike", null) }
-                    ToolbarAction(Icons.Rounded.Title, "标题") { onCommand("h1", null) }
-                } else {
+            }
+        } else {
+            Column(Modifier.navigationBarsPadding()) {
+                ToolbarRow {
+                    ToolbarAction(Icons.Rounded.Undo, "撤销") { onCommand("undo", null) }
+                    ToolbarAction(Icons.Rounded.Redo, "重做") { onCommand("redo", null) }
+                    ToolbarDivider()
+                    HeadingMenu(onPick = { onCommand("heading", it) })
+                    ToolbarAction(Icons.Rounded.FormatBold, "加粗") { onCommand("bold", null) }
+                    ToolbarAction(Icons.Rounded.FormatItalic, "斜体") { onCommand("italic", null) }
                     ToolbarAction(Icons.Rounded.FormatUnderlined, "下划线") { onCommand("underline", null) }
                     ToolbarAction(Icons.Rounded.FormatStrikethrough, "删除线") { onCommand("strike", null) }
-                    ToolbarAction(Icons.Rounded.Title, "标题") { onCommand("h2", "<h2>") }
-                }
-                ToolbarAction(Icons.Rounded.FormatListBulleted, "无序列表") { onCommand("ul", null) }
-                ToolbarAction(Icons.Rounded.FormatListNumbered, "有序列表") { onCommand("ol", null) }
-                ToolbarAction(Icons.Rounded.FormatQuote, "引用") {
-                    if (isMarkdown) onCommand("quote", null) else onCommand("quote", "<blockquote>")
-                }
-                if (isMarkdown) {
                     ToolbarAction(Icons.Rounded.Code, "行内代码") { onCommand("code", null) }
+                    ToolbarAction(Icons.Rounded.FormatColorText, "文字颜色") { onColor("color") }
+                    ToolbarAction(Icons.Rounded.Highlight, "高亮") { onColor("highlight") }
+                    if (!isMarkdown) {
+                        ToolbarDivider()
+                        ToolbarAction(Icons.Rounded.FormatAlignLeft, "左对齐") { onCommand("alignLeft", null) }
+                        ToolbarAction(Icons.Rounded.FormatAlignCenter, "居中") { onCommand("alignCenter", null) }
+                        ToolbarAction(Icons.Rounded.FormatAlignRight, "右对齐") { onCommand("alignRight", null) }
+                    }
                 }
-                ToolbarAction(Icons.Rounded.Link, "链接", onLink)
-                ToolbarAction(Icons.Rounded.Image, "插入图片", onImage)
-                ToolbarAction(Icons.Rounded.Visibility, "预览", onTogglePreview)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                ToolbarRow {
+                    ToolbarAction(Icons.Rounded.FormatListBulleted, "无序列表") { onCommand("ul", null) }
+                    ToolbarAction(Icons.Rounded.FormatListNumbered, "有序列表") { onCommand("ol", null) }
+                    ToolbarAction(Icons.Rounded.Checklist, "任务列表") { onCommand("task", null) }
+                    ToolbarAction(Icons.Rounded.FormatQuote, "引用") { onCommand("quote", null) }
+                    ToolbarAction(Icons.Rounded.Code, "代码块") { onCommand("codeblock", null) }
+                    ToolbarDivider()
+                    ToolbarAction(Icons.Rounded.Link, "链接") { onCommand("link", null) }
+                    ToolbarAction(Icons.Rounded.Image, "插入图片", onImage)
+                    ToolbarAction(Icons.Rounded.TableChart, "表格") { onCommand("table", null) }
+                    ToolbarAction(Icons.Rounded.HorizontalRule, "分割线") { onCommand("hr", null) }
+                    ToolbarDivider()
+                    ToolbarAction(Icons.Rounded.Visibility, "预览", onTogglePreview)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ToolbarRow(content: @Composable () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun ToolbarDivider() {
+    Box(
+        Modifier
+            .padding(horizontal = 2.dp)
+            .size(width = 1.dp, height = 20.dp)
+            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+    )
+}
+
+@Composable
+private fun HeadingMenu(onPick: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }, modifier = Modifier.size(42.dp)) {
+            Icon(
+                imageVector = Icons.Rounded.Title,
+                contentDescription = "标题级别",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(21.dp),
+            )
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            listOf(
+                "h1" to "一级标题",
+                "h2" to "二级标题",
+                "h3" to "三级标题",
+                "p" to "正文",
+            ).forEach { (level, label) ->
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    onClick = {
+                        open = false
+                        onPick(level)
+                    },
+                )
             }
         }
     }
@@ -540,7 +703,7 @@ private fun ToolbarAction(
     description: String,
     onClick: () -> Unit,
 ) {
-    IconButton(onClick = onClick) {
+    IconButton(onClick = onClick, modifier = Modifier.size(42.dp)) {
         Icon(
             imageVector = icon,
             contentDescription = description,
@@ -549,6 +712,56 @@ private fun ToolbarAction(
         )
     }
 }
+
+private val TextColors = listOf(
+    "#E53935", "#FB8C00", "#FDD835", "#43A047",
+    "#00897B", "#1E88E5", "#8E24AA", "#546E7A",
+)
+
+private val HighlightColors = listOf(
+    "#FFF59D", "#C8E6C9", "#BBDEFB", "#F8BBD0", "#FFE0B2", "#D1C4E9",
+)
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun EditorColorDialog(
+    mode: String,
+    onDismiss: () -> Unit,
+    onPick: (String) -> Unit,
+) {
+    val colors = if (mode == "color") TextColors else HighlightColors
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (mode == "color") "文字颜色" else "高亮颜色") },
+        text = {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                colors.forEach { hex ->
+                    Box(
+                        Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(hex)))
+                            .clickable { onPick(hex) },
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        },
+    )
+}
+
+private val MARKDOWN_TABLE =
+    "\n\n| 列 1 | 列 2 | 列 3 |\n| --- | --- | --- |\n| 内容 | 内容 | 内容 |\n\n"
+
+private val RICH_TABLE_HTML =
+    "<table><thead><tr><th>列 1</th><th>列 2</th><th>列 3</th></tr></thead>" +
+        "<tbody><tr><td>内容</td><td>内容</td><td>内容</td></tr>" +
+        "<tr><td>内容</td><td>内容</td><td>内容</td></tr></tbody></table><p><br></p>"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -675,6 +888,32 @@ private fun TextFieldValue.toggleLinePrefix(prefix: String): TextFieldValue {
             selection = TextRange(cursor + prefix.length),
         )
     }
+}
+
+private fun TextFieldValue.insertWrappedBlock(prefix: String, suffix: String): TextFieldValue {
+    val start = selection.min.coerceIn(0, text.length)
+    val end = selection.max.coerceIn(start, text.length)
+    val selected = text.substring(start, end)
+    val newText = text.replaceRange(start, end, prefix + selected + suffix)
+    return TextFieldValue(newText, TextRange(start + prefix.length + selected.length))
+}
+
+private fun TextFieldValue.setHeading(level: String): TextFieldValue {
+    val prefix = when (level) {
+        "h1" -> "# "
+        "h2" -> "## "
+        "h3" -> "### "
+        else -> ""
+    }
+    val cursor = selection.start.coerceIn(0, text.length)
+    val lineStart = (text.lastIndexOf('\n', (cursor - 1).coerceAtLeast(0)).let { if (it < 0) 0 else it + 1 })
+    val lineEnd = text.indexOf('\n', cursor).let { if (it < 0) text.length else it }
+    val line = text.substring(lineStart, lineEnd)
+    val stripped = line.replaceFirst(Regex("^#{1,6}\\s+"), "")
+    val newLine = prefix + stripped
+    val newText = text.replaceRange(lineStart, lineEnd, newLine)
+    val newCursor = (cursor + newLine.length - line.length).coerceIn(lineStart, lineStart + newLine.length)
+    return TextFieldValue(newText, TextRange(newCursor))
 }
 
 @dagger.hilt.EntryPoint

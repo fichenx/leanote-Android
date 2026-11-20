@@ -104,4 +104,5 @@ dependencies {
     implementation(libs.markwon.strikethrough)
     implementation(libs.markwon.tasklist)
     implementation(libs.markwon.linkify)
+    implementation(libs.markwon.html)
 }

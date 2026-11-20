@@ -197,6 +197,28 @@ class ImageRepository @Inject constructor(
             if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
         }
     }.getOrNull()
+
+    /**
+     * 笔记列表缩略图：取正文中最早出现的一张图片，返回 Coil 可加载的模型（本地文件或远程地址）。
+     */
+    suspend fun thumbnailModel(content: String, account: Account?): Any? {
+        data class Hit(val index: Int, val kind: Int, val value: String)
+
+        val hits = listOfNotNull(
+            ImageRefs.localPattern.find(content)?.let { Hit(it.range.first, 0, it.groupValues[1]) },
+            ImageRefs.webLocalPattern.find(content)?.let { Hit(it.range.first, 0, it.groupValues[1]) },
+            ImageRefs.webServerPattern.find(content)?.let { Hit(it.range.first, 1, it.groupValues[1]) },
+            ImageRefs.remotePattern.find(content)?.let { Hit(it.range.first, 1, it.groupValues[2]) },
+            ImageRefs.genericImagePattern.find(content)?.let { Hit(it.range.first, 2, it.value) },
+        )
+        val hit = hits.minByOrNull { it.index } ?: return null
+        return when (hit.kind) {
+            0 -> imageDao.getByLocalId(hit.value)?.let { File(it.localPath) }?.takeIf { it.isFile }
+            1 -> imageDao.getByServerId(hit.value)?.let { File(it.localPath) }?.takeIf { it.isFile }
+                ?: account?.let { apiClient.imageUrl(it.host, hit.value, it.token) }
+            else -> hit.value
+        }
+    }
 }
 
 private const val WEB_HOST = "https://leanote.local"
@@ -207,6 +229,10 @@ private object ImageRefs {
     val webServerPattern = Regex("""https://leanote\.local/getImage\?serverId=([A-Za-z0-9_\-]+)""")
     val remotePattern = Regex(
         """(https?://[^"'\s()<>]+?/api/file/getImage\?fileId=([A-Za-z0-9_\-]+))(?:&token=[^"'\s()<>]*)?"""
+    )
+    val genericImagePattern = Regex(
+        """https?://[^"'\s()<>]+\.(?:png|jpe?g|gif|webp|bmp|svg)(?:\?[^"'\s()<>]*)?""",
+        RegexOption.IGNORE_CASE,
     )
 
     fun localIds(content: String): List<String> =

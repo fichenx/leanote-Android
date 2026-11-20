@@ -25,6 +25,11 @@ data class Account(
         if (logo.isBlank()) return null
         return if (logo.startsWith("http")) logo else host.trimEnd('/') + "/" + logo.trimStart('/')
     }
+
+    fun blogUrl(): String {
+        val owner = username.ifBlank { userId }
+        return host.trimEnd('/') + "/blog/" + owner
+    }
 }
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }

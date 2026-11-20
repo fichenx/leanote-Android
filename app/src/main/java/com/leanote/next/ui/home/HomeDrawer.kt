@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Notes
@@ -40,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -65,6 +67,7 @@ fun HomeDrawerContent(
     onAddNotebook: () -> Unit,
     onNotebookMenu: (NotebookEntity) -> Unit,
     onSwitchAccount: () -> Unit,
+    onOpenBlog: () -> Unit,
     onSettings: () -> Unit,
 ) {
     Column(
@@ -73,33 +76,47 @@ fun HomeDrawerContent(
             .verticalScroll(rememberScrollState())
             .padding(bottom = 24.dp),
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 8.dp, top = 22.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f),
+                            MaterialTheme.colorScheme.surface,
+                        ),
+                    ),
+                ),
         ) {
-            if (account != null) {
-                AccountAvatar(account, size = 46.dp)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        account.displayName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = account.host.removePrefix("https://").removePrefix("http://"),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                IconButton(onClick = onSwitchAccount) {
-                    Icon(Icons.Rounded.SwapHoriz, contentDescription = "切换账户")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = account != null, onClick = onSwitchAccount)
+                    .padding(start = 20.dp, end = 8.dp, top = 26.dp, bottom = 18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (account != null) {
+                    AccountAvatar(account, size = 54.dp)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            account.displayName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = account.host.removePrefix("https://").removePrefix("http://"),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    IconButton(onClick = onSwitchAccount) {
+                        Icon(Icons.Rounded.SwapHoriz, contentDescription = "切换账户")
+                    }
                 }
             }
         }
@@ -125,6 +142,27 @@ fun HomeDrawerContent(
             colors = NavigationDrawerItemDefaults.colors(
                 selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
             ),
+        )
+        NavigationDrawerItem(
+            label = {
+                Column {
+                    Text("我的博客")
+                    if (account != null) {
+                        Text(
+                            text = account.blogUrl().removePrefix("https://").removePrefix("http://"),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            },
+            icon = { Icon(Icons.Outlined.Public, contentDescription = null) },
+            selected = false,
+            onClick = onOpenBlog,
+            modifier = Modifier.padding(horizontal = 12.dp),
+            shape = MaterialTheme.shapes.medium,
         )
 
         Spacer(Modifier.height(10.dp))

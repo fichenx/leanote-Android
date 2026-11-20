@@ -58,6 +58,7 @@ markwon-tables = { module = "io.noties.markwon:ext-tables", version.ref = "markw
 markwon-strikethrough = { module = "io.noties.markwon:ext-strikethrough", version.ref = "markwon" }
 markwon-tasklist = { module = "io.noties.markwon:ext-tasklist", version.ref = "markwon" }
 markwon-linkify = { module = "io.noties.markwon:linkify", version.ref = "markwon" }
+markwon-html = { module = "io.noties.markwon:html", version.ref = "markwon" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

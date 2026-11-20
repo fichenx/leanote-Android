@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,8 +22,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.CropFree
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.FitScreen
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Share
@@ -53,7 +56,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.leanote.next.data.local.NoteEntity
@@ -62,6 +67,7 @@ import com.leanote.next.ui.components.ConfirmDialog
 import com.leanote.next.ui.components.EmptyState
 import com.leanote.next.ui.components.LoadingBox
 import com.leanote.next.ui.components.TagRow
+import com.leanote.next.ui.theme.MonoFont
 import com.leanote.next.ui.web.HtmlContent
 import com.leanote.next.ui.web.MarkdownContent
 import com.leanote.next.util.TimeUtils
@@ -82,6 +88,7 @@ fun NoteDetailScreen(
     val scope = rememberCoroutineScope()
     var moreMenu by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var fitToWidth by rememberSaveable { mutableStateOf(true) }
 
     val imageRepository = remember(context) {
         EntryPointAccessors.fromApplication(
@@ -118,6 +125,12 @@ fun NoteDetailScreen(
                     )
                 },
                 actions = {
+                    IconButton(onClick = { fitToWidth = !fitToWidth }) {
+                        Icon(
+                            imageVector = if (fitToWidth) Icons.Rounded.CropFree else Icons.Rounded.FitScreen,
+                            contentDescription = if (fitToWidth) "切换为原文模式" else "切换为移动端适配",
+                        )
+                    }
                     IconButton(onClick = onEdit) {
                         Icon(Icons.Rounded.Edit, contentDescription = "编辑")
                     }
@@ -213,6 +226,7 @@ fun NoteDetailScreen(
             note.isMarkdown -> MarkdownDetail(
                 note = note,
                 rendered = state.renderedContent,
+                fitToWidth = fitToWidth,
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize(),
@@ -222,6 +236,7 @@ fun NoteDetailScreen(
                 rendered = state.renderedContent,
                 imageRepository = imageRepository,
                 account = state.account,
+                fitToWidth = fitToWidth,
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize(),
@@ -245,19 +260,43 @@ fun NoteDetailScreen(
 }
 
 @Composable
-private fun MarkdownDetail(note: NoteEntity, rendered: String, modifier: Modifier = Modifier) {
+private fun MarkdownDetail(
+    note: NoteEntity,
+    rendered: String,
+    fitToWidth: Boolean,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 22.dp),
     ) {
-        NoteHeader(note)
-        MarkdownContent(
-            markdown = rendered,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 56.dp),
-        )
+        NoteHeader(note, originalMode = !fitToWidth)
+        if (fitToWidth) {
+            MarkdownContent(
+                markdown = rendered,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 56.dp),
+            )
+        } else {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+            ) {
+                Text(
+                    text = note.content,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = MonoFont,
+                        fontSize = 14.sp,
+                        lineHeight = 23.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 56.dp),
+                )
+            }
+        }
     }
 }
 
@@ -267,14 +306,16 @@ private fun HtmlDetail(
     rendered: String,
     imageRepository: ImageRepository,
     account: com.leanote.next.data.model.Account?,
+    fitToWidth: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
-        Box(Modifier.padding(horizontal = 22.dp)) { NoteHeader(note) }
+        Box(Modifier.padding(horizontal = 22.dp)) { NoteHeader(note, originalMode = !fitToWidth) }
         HtmlContent(
             html = rendered,
             account = account,
             images = imageRepository,
+            fitToWidth = fitToWidth,
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
@@ -283,7 +324,7 @@ private fun HtmlDetail(
 }
 
 @Composable
-private fun NoteHeader(note: NoteEntity) {
+private fun NoteHeader(note: NoteEntity, originalMode: Boolean = false) {
     Column(Modifier.padding(top = 4.dp, bottom = 12.dp)) {
         Text(
             text = if (note.title.isBlank()) "无标题笔记" else note.title,
@@ -320,6 +361,29 @@ private fun NoteHeader(note: NoteEntity) {
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                )
+            }
+            if (originalMode) {
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    Icons.Outlined.Public,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.size(12.dp),
+                )
+            }
+        }
+        if (originalMode) {
+            Spacer(Modifier.height(8.dp))
+            Surface(
+                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
+                shape = MaterialTheme.shapes.extraSmall,
+            ) {
+                Text(
+                    "原文模式 · 可左右滑动",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                 )
             }
         }

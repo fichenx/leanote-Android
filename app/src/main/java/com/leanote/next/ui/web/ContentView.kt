@@ -26,6 +26,7 @@ import io.noties.markwon.Markwon
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
 import io.noties.markwon.ext.tables.TablePlugin
 import io.noties.markwon.ext.tasklist.TaskListPlugin
+import io.noties.markwon.html.HtmlPlugin
 import io.noties.markwon.image.ImagesPlugin
 import io.noties.markwon.linkify.LinkifyPlugin
 import kotlinx.coroutines.runBlocking
@@ -53,6 +54,7 @@ fun MarkdownContent(
             .usePlugin(TaskListPlugin.create(context))
             .usePlugin(LinkifyPlugin.create())
             .usePlugin(ImagesPlugin.create())
+            .usePlugin(HtmlPlugin.create())
             .usePlugin(object : io.noties.markwon.AbstractMarkwonPlugin() {
                 override fun configureTheme(builder: io.noties.markwon.core.MarkwonTheme.Builder) {
                     builder.linkColor(linkColor.toArgb())
@@ -93,6 +95,7 @@ fun HtmlContent(
     account: Account?,
     images: ImageRepository,
     modifier: Modifier = Modifier,
+    fitToWidth: Boolean = true,
 ) {
     val context = LocalContext.current
     val isDark = MaterialTheme.colorScheme.background.toArgb() == AndroidColor.parseColor("#0F1413")
@@ -103,8 +106,8 @@ fun HtmlContent(
     val codeBg = MaterialTheme.colorScheme.surfaceContainerHigh.toArgb()
     val border = MaterialTheme.colorScheme.outlineVariant.toArgb()
 
-    val fullHtml = remember(html, bg, fg, link, quote, codeBg, border) {
-        buildHtmlDocument(html, bg, fg, link, quote, codeBg, border)
+    val fullHtml = remember(html, bg, fg, link, quote, codeBg, border, fitToWidth) {
+        buildHtmlDocument(html, bg, fg, link, quote, codeBg, border, fitToWidth)
     }
 
     AndroidView(
@@ -113,6 +116,7 @@ fun HtmlContent(
             WebView(ctx).apply {
                 setBackgroundColor(AndroidColor.TRANSPARENT)
                 isVerticalScrollBarEnabled = false
+                isHorizontalScrollBarEnabled = !fitToWidth
                 settings.javaScriptEnabled = false
                 settings.domStorageEnabled = false
                 settings.loadsImagesAutomatically = true
@@ -152,6 +156,7 @@ fun HtmlContent(
             }
         },
         update = { webView ->
+            webView.isHorizontalScrollBarEnabled = !fitToWidth
             if (webView.tag != fullHtml) {
                 webView.tag = fullHtml
                 webView.loadDataWithBaseURL(account?.host, fullHtml, "text/html", "utf-8", null)
@@ -168,8 +173,26 @@ internal fun buildHtmlDocument(
     quote: Int,
     codeBg: Int,
     border: Int,
+    fitToWidth: Boolean = true,
 ): String {
     fun hex(color: Int) = String.format("#%06X", 0xFFFFFF and color)
+    val layout = if (fitToWidth) {
+        """
+          html, body { overflow-x: hidden; }
+          body { max-width: 100%; overflow-wrap: anywhere; }
+          img, video, iframe { max-width: 100% !important; height: auto !important; }
+          table { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+          pre { overflow-x: auto; white-space: pre; }
+        """
+    } else {
+        """
+          html, body { overflow-x: auto; }
+          body { width: max-content; min-width: 100%; }
+          img, video, iframe { max-width: none !important; }
+          table { white-space: nowrap; }
+          pre { white-space: pre; }
+        """
+    }
     return """
         <!DOCTYPE html>
         <html><head>
@@ -184,11 +207,11 @@ internal fun buildHtmlDocument(
           h1 { font-size: 26px; } h2 { font-size: 22px; } h3 { font-size: 19px; }
           h4 { font-size: 17px; }
           a { color: ${hex(link)}; text-decoration: none; }
-          img { max-width: 100% !important; height: auto; border-radius: 12px; display: block; margin: 12px 0; }
+          img { height: auto; border-radius: 12px; display: block; margin: 12px 0; }
           blockquote { margin: 16px 0; padding: 6px 16px; border-left: 3px solid ${hex(link)};
                        color: ${hex(quote)}; background: ${hex(codeBg)}55; border-radius: 0 8px 8px 0; }
           pre, code { font-family: "JetBrains Mono", Menlo, Consolas, monospace; font-size: 14px; }
-          pre { background: ${hex(codeBg)}; padding: 14px 16px; border-radius: 12px; overflow-x: auto; }
+          pre { background: ${hex(codeBg)}; padding: 14px 16px; border-radius: 12px; }
           code { background: ${hex(codeBg)}; padding: 2px 5px; border-radius: 5px; }
           pre code { background: transparent; padding: 0; }
           table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 15px; }
@@ -197,8 +220,9 @@ internal fun buildHtmlDocument(
           hr { border: none; border-top: 1px solid ${hex(border)}; margin: 24px 0; }
           ul, ol { padding-left: 24px; margin: 0 0 16px 0; }
           li { margin: 4px 0; }
-          iframe, video { max-width: 100%; border-radius: 12px; }
+          iframe, video { border-radius: 12px; }
           .leanote-image-wrapper { margin: 12px 0; }
+          $layout
         </style>
         </head><body>$body</body></html>
     """.trimIndent()
