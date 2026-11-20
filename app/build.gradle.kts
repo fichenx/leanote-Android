@@ -7,6 +7,9 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+import java.text.SimpleDateFormat
+import java.util.Date
+
 android {
     namespace = "com.leanote.next"
     compileSdk = 35
@@ -15,8 +18,8 @@ android {
         applicationId = "com.leanote.next"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.2.0"
 
         vectorDrawables.useSupportLibrary = true
     }
@@ -53,6 +56,24 @@ android {
             excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "META-INF/DEPENDENCIES")
         }
     }
+}
+
+// 自定义 APK 输出名：leanote_版本号-debug_YYYYMMDDHHmm.apk
+// packageDebug/packageRelease 才是真正产出 APK 的 task
+gradle.projectsEvaluated {
+    tasks.filter { it.name.startsWith("package") && it.name.endsWith("Debug") || it.name.startsWith("package") && it.name.endsWith("Release") }
+        .forEach { task ->
+            task.doLast {
+                val tpl = SimpleDateFormat("yyyyMMddHHmm").format(Date())
+                val version = android.defaultConfig.versionName
+                println("[APK rename] version=$version tpl=$tpl")
+                task.outputs.files.asFileTree.filter { it.extension == "apk" }.files.forEach { apk ->
+                    val target = File(apk.parentFile, "leanote_${version}_$tpl.apk")
+                    println("[APK rename] ${apk.name} -> ${target.name}")
+                    apk.copyTo(target, overwrite = true)
+                }
+            }
+        }
 }
 
 ksp {

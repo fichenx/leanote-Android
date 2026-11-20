@@ -43,7 +43,7 @@ data class Account(
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
 /** 应用配色方案。 */
-enum class ThemePalette { FOREST, OCEAN, LAVENDER, SUNSET, GRAPHITE }
+enum class ThemePalette { FOREST, OCEAN, LAVENDER, SUNSET, GRAPHITE, CREAM_PAPER, MONOCHROME, NEON }
 
 enum class SortMode { UPDATED_DESC, UPDATED_ASC, CREATED_DESC, TITLE_ASC }
 

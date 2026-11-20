@@ -20,6 +20,9 @@ import retrofit2.http.Query
 /**
  * Leanote 服务端 API 的 Kotlin 映射。
  * token 显式作为查询参数传递，便于多账户切换。
+ *
+ * 注意：Kotlin 的 Map<String, RequestBody> 会被编译为 Map<String, ? extends RequestBody>，
+ * Retrofit 反射拒绝通配符，因此 @PartMap 参数必须加上 @JvmSuppressWildcards。
  */
 interface LeanoteApi {
 
@@ -109,6 +112,7 @@ interface LeanoteApi {
 
     @Multipart
     @POST("note/addNote")
+    @JvmSuppressWildcards
     suspend fun addNote(
         @PartMap fields: Map<String, RequestBody>,
         @Part files: List<MultipartBody.Part>,
@@ -117,6 +121,7 @@ interface LeanoteApi {
 
     @Multipart
     @POST("note/updateNote")
+    @JvmSuppressWildcards
     suspend fun updateNote(
         @PartMap fields: Map<String, RequestBody>,
         @Part files: List<MultipartBody.Part>,

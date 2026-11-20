@@ -1,5 +1,20 @@
 # 更新日志
 
+## 2026-11-20 · 1.2.0
+
+### 修复
+- 移动端新增/修改笔记无法同步到服务器：Retrofit `@PartMap` 的 `Map<String, RequestBody>` 在 Kotlin 编译后变成带通配符的 `Map<String, ? extends RequestBody>`，服务器侧 Multipart 解析失败导致同步中断。已在 `addNote`/`updateNote` 方法上添加 `@JvmSuppressWildcards` 注解消除通配符。
+
+### 新增
+- 编辑器表格支持自定义行数和列数（1~10），取代原硬编码的 3×3 模板
+- 新增 3 套视觉风格预设：
+  - **泛黄纸**：衬线字体 + 温润米白纸感，适合长文阅读
+  - **极简黑白**：等宽无衬线 + 方角 shape，Developer 风
+  - **霓虹科技**：高饱和绿粉撞色 + 赛博感
+
+### 优化
+- APK 输出文件名改为 `leanote_版本号-debug_YYYYMMDDHHmm.apk` 格式，自动带时间戳方便归档
+
 ## 2026-11-20 · 1.1.1
 
 - 移动端适配模式进一步归一化正文字号、行高与字体，覆盖笔记内联样式，阅读观感更统一

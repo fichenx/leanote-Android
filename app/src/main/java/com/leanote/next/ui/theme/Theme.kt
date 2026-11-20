@@ -22,6 +22,7 @@ import com.leanote.next.data.model.ThemeMode
 import com.leanote.next.data.model.ThemePalette
 import androidx.compose.material3.Shapes
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.font.FontSynthesis
 
 private val Ink = Color(0xFF191C1B)
 private val Paper = Color(0xFFFBFAF6)
@@ -143,6 +144,21 @@ private fun paletteColors(palette: ThemePalette, dark: Boolean): PaletteColors {
                 Color(0xFFB3CCC4), Color(0xFF25332F), Color(0xFF354B44), Color(0xFFCFE9E1),
                 Color(0xFFD8C58A), Color(0xFF3A2F00), Color(0xFF51461B), Color(0xFFF4E3A7),
             )
+            ThemePalette.CREAM_PAPER -> PaletteColors(
+                Color(0xFFD8C58A), Color(0xFF3A2F00), Color(0xFF51461B), Color(0xFFF4E3A7),
+                Color(0xFFBEB095), Color(0xFF31281A), Color(0xFF463B2B), Color(0xFFE9DDC6),
+                Color(0xFFCF9E6D), Color(0xFF3B1E00), Color(0xFF5F350A), Color(0xFFFFD8B0),
+            )
+            ThemePalette.MONOCHROME -> PaletteColors(
+                Color(0xFFE0E0E0), Color(0xFF1C1C1C), Color(0xFF3C3C3C), Color(0xFFF4F4F4),
+                Color(0xFFCACACA), Color(0xFF2B2B2B), Color(0xFF484848), Color(0xFFDDDDDD),
+                Color(0xFFB0B0B0), Color(0xFF1E1E1E), Color(0xFF3F3F3F), Color(0xFFE5E5E5),
+            )
+            ThemePalette.NEON -> PaletteColors(
+                Color(0xFF00FF9D), Color(0xFF00210F), Color(0xFF003A1D), Color(0xFF5DFFC0),
+                Color(0xFF4ADE80), Color(0xFF00210F), Color(0xFF003A1D), Color(0xFFA7F3D0),
+                Color(0xFFFF4DC4), Color(0xFF3C0029), Color(0xFF5C003D), Color(0xFFFFB4DE),
+            )
         }
     }
     return when (palette) {
@@ -171,6 +187,21 @@ private fun paletteColors(palette: ThemePalette, dark: Boolean): PaletteColors {
             Color(0xFF4B635C), Color.White, Color(0xFFCFE9E1), Color(0xFF082019),
             Color(0xFF6B5D2F), Color.White, Color(0xFFF4E3A7), Color(0xFF211B00),
         )
+        ThemePalette.CREAM_PAPER -> PaletteColors(
+            Color(0xFF8A5A00), Color.White, Color(0xFFFFDF9C), Color(0xFF2C1A00),
+            Color(0xFF7A6A47), Color.White, Color(0xFFF5E7C7), Color(0xFF251E0F),
+            Color(0xFF5E3A14), Color.White, Color(0xFFE8C8A0), Color(0xFF1D0F00),
+        )
+        ThemePalette.MONOCHROME -> PaletteColors(
+            Color(0xFF1A1A1A), Color.White, Color(0xFFE0E0E0), Color(0xFF000000),
+            Color(0xFF4A4A4A), Color.White, Color(0xFFEAEAEA), Color(0xFF1A1A1A),
+            Color(0xFF666666), Color.White, Color(0xFFF0F0F0), Color(0xFF222222),
+        )
+        ThemePalette.NEON -> PaletteColors(
+            Color(0xFF00B56B), Color.White, Color(0xFF00FF9D), Color(0xFF00210F),
+            Color(0xFF1F6B4A), Color.White, Color(0xFFA7F3D0), Color(0xFF00210F),
+            Color(0xFFC2007E), Color.White, Color(0xFFFF4DC4), Color(0xFF3C0029),
+        )
     }
 }
 
@@ -197,6 +228,64 @@ private fun colorSchemeFor(palette: ThemePalette, dark: Boolean): ColorScheme {
 
 val ReadingFont: FontFamily = FontFamily.Serif
 val MonoFont: FontFamily = FontFamily.Monospace
+
+/** 每种配色自带的视觉风格（形状 + 字体预设）。 */
+private fun shapesFor(palette: ThemePalette): Shapes = when (palette) {
+    ThemePalette.CREAM_PAPER -> Shapes(
+        extraSmall = RoundedCornerShape(6.dp),
+        small = RoundedCornerShape(8.dp),
+        medium = RoundedCornerShape(10.dp),
+        large = RoundedCornerShape(12.dp),
+        extraLarge = RoundedCornerShape(16.dp),
+    )
+    ThemePalette.MONOCHROME -> Shapes(
+        extraSmall = RoundedCornerShape(0.dp),
+        small = RoundedCornerShape(0.dp),
+        medium = RoundedCornerShape(0.dp),
+        large = RoundedCornerShape(0.dp),
+        extraLarge = RoundedCornerShape(0.dp),
+    )
+    ThemePalette.NEON -> Shapes(
+        extraSmall = RoundedCornerShape(4.dp),
+        small = RoundedCornerShape(6.dp),
+        medium = RoundedCornerShape(8.dp),
+        large = RoundedCornerShape(12.dp),
+        extraLarge = RoundedCornerShape(16.dp),
+    )
+    else -> LeanoteShapes
+}
+
+private fun typographyFor(palette: ThemePalette): Typography = when (palette) {
+    ThemePalette.CREAM_PAPER -> {
+        val serif = FontFamily.Serif
+        LeanoteTypography.copy(
+            displayLarge = LeanoteTypography.displayLarge.withFamily(serif),
+            displayMedium = LeanoteTypography.displayMedium.withFamily(serif),
+            headlineLarge = LeanoteTypography.headlineLarge.withFamily(serif).copy(fontWeight = FontWeight.Bold),
+            headlineMedium = LeanoteTypography.headlineMedium.withFamily(serif).copy(fontWeight = FontWeight.Bold),
+            headlineSmall = LeanoteTypography.headlineSmall.withFamily(serif),
+            titleLarge = LeanoteTypography.titleLarge.withFamily(serif),
+            bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 26.sp, fontFamily = serif),
+            bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 22.sp, fontFamily = serif),
+        )
+    }
+    ThemePalette.MONOCHROME -> LeanoteTypography.copy(
+        titleLarge = LeanoteTypography.titleLarge.copy(fontWeight = FontWeight.Black, letterSpacing = (-1.5).sp),
+        titleMedium = LeanoteTypography.titleMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
+        bodyLarge = TextStyle(fontSize = 15.sp, lineHeight = 24.sp, letterSpacing = 0.3.sp),
+        bodyMedium = TextStyle(fontSize = 13.sp, lineHeight = 20.sp, letterSpacing = 0.3.sp),
+    )
+    ThemePalette.NEON -> LeanoteTypography.copy(
+        titleLarge = LeanoteTypography.titleLarge.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = 0.sp),
+        bodyLarge = TextStyle(fontSize = 15.sp, lineHeight = 24.sp, fontFamily = FontFamily.Monospace),
+    )
+    else -> LeanoteTypography
+}
+
+private fun TextStyle.withFamily(family: FontFamily): TextStyle = copy(
+    fontFamily = family,
+    fontSynthesis = FontSynthesis.All,
+)
 
 private val BaseTypography = Typography()
 
@@ -236,8 +325,8 @@ fun LeanoteTheme(settings: AppSettings, content: @Composable () -> Unit) {
     }
     MaterialTheme(
         colorScheme = scheme,
-        typography = LeanoteTypography,
-        shapes = LeanoteShapes,
+        typography = typographyFor(settings.palette),
+        shapes = shapesFor(settings.palette),
         content = content,
     )
 }

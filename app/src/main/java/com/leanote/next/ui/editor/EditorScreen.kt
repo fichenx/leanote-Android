@@ -130,6 +130,7 @@ fun EditorScreen(
     var showLinkDialog by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var colorMode by remember { mutableStateOf<String?>(null) }
+    var tableSize by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     var markdownValue by remember(localId) { mutableStateOf(TextFieldValue("")) }
 
     val undoStack = remember(localId) { mutableStateListOf<TextFieldValue>() }
@@ -192,7 +193,13 @@ fun EditorScreen(
             "quote" -> markdownValue.toggleLinePrefix("> ")
             "codeblock" -> markdownValue.insertWrappedBlock("\n```\n", "\n```\n")
             "hr" -> markdownValue.insertAtCursor("\n\n---\n\n")
-            "table" -> markdownValue.insertAtCursor(MARKDOWN_TABLE)
+            "table" -> {
+                val (r, c) = (value ?: "3x3").split("x").let {
+                    (it.getOrNull(0)?.toIntOrNull()?.coerceIn(1, 10) ?: 3) to
+                        (it.getOrNull(1)?.toIntOrNull()?.coerceIn(1, 10) ?: 3)
+                }
+                markdownValue.insertAtCursor(buildMarkdownTable(r, c))
+            }
             "link" -> {
                 showLinkDialog = true
                 return
@@ -204,7 +211,13 @@ fun EditorScreen(
 
     fun runRich(command: String, value: String?) {
         when (command) {
-            "table" -> richController.insertHtml(RICH_TABLE_HTML)
+            "table" -> {
+                val (r, c) = (value ?: "3x3").split("x").let {
+                    (it.getOrNull(0)?.toIntOrNull()?.coerceIn(1, 10) ?: 3) to
+                        (it.getOrNull(1)?.toIntOrNull()?.coerceIn(1, 10) ?: 3)
+                }
+                richController.insertHtml(buildRichTableHtml(r, c))
+            }
             "codeblock" -> richController.insertHtml("<pre><br></pre><p><br></p>")
             "task" -> richController.exec("insertUnorderedList")
             "link" -> {
@@ -335,6 +348,7 @@ fun EditorScreen(
                 },
                 onImage = { pickImage.launch("image/*") },
                 onColor = { colorMode = it },
+                onTable = { tableSize = Pair(3, 3) },
                 onTogglePreview = { showPreview = !showPreview },
             )
         },
@@ -438,6 +452,16 @@ fun EditorScreen(
                 if (state.isMarkdown) runMarkdown(mode, hex) else runRich(mode, hex)
             },
         )
+    }
+
+    tableSize?.let { _ ->
+        TableSizeDialog(
+            onDismiss = { tableSize = null },
+        ) { rows, cols ->
+            tableSize = null
+            val value = "${rows}x${cols}"
+            if (state.isMarkdown) runMarkdown("table", value) else runRich("table", value)
+        }
     }
 
     if (confirmDelete) {
@@ -580,6 +604,7 @@ private fun EditorToolbar(
     onCommand: (String, String?) -> Unit,
     onImage: () -> Unit,
     onColor: (String) -> Unit,
+    onTable: () -> Unit,
     onTogglePreview: () -> Unit,
 ) {
     Surface(
@@ -633,7 +658,7 @@ private fun EditorToolbar(
                     ToolbarDivider()
                     ToolbarAction(Icons.Rounded.Link, "链接") { onCommand("link", null) }
                     ToolbarAction(Icons.Rounded.Image, "插入图片", onImage)
-                    ToolbarAction(Icons.Rounded.TableChart, "表格") { onCommand("table", null) }
+                    ToolbarAction(Icons.Rounded.TableChart, "表格", onTable)
                     ToolbarAction(Icons.Rounded.HorizontalRule, "分割线") { onCommand("hr", null) }
                     ToolbarDivider()
                     ToolbarAction(Icons.Rounded.Visibility, "预览", onTogglePreview)
@@ -755,13 +780,85 @@ private fun EditorColorDialog(
     )
 }
 
-private val MARKDOWN_TABLE =
-    "\n\n| 列 1 | 列 2 | 列 3 |\n| --- | --- | --- |\n| 内容 | 内容 | 内容 |\n\n"
+private fun buildMarkdownTable(rows: Int, cols: Int): String {
+    val c = cols.coerceIn(1, 10)
+    val r = rows.coerceIn(1, 10)
+    val header = (1..c).joinToString(" | ") { "列 $it" }
+    val sep = (1..c).joinToString(" | ") { "---" }
+    val body = (1..r).joinToString("\n") { (1..c).joinToString(" | ") { "内容" } }
+    return "\n\n| $header |\n| $sep |\n| $body |\n\n"
+}
 
-private val RICH_TABLE_HTML =
-    "<table><thead><tr><th>列 1</th><th>列 2</th><th>列 3</th></tr></thead>" +
-        "<tbody><tr><td>内容</td><td>内容</td><td>内容</td></tr>" +
-        "<tr><td>内容</td><td>内容</td><td>内容</td></tr></tbody></table><p><br></p>"
+private fun buildRichTableHtml(rows: Int, cols: Int): String {
+    val c = cols.coerceIn(1, 10)
+    val r = rows.coerceIn(1, 10)
+    val head = (1..c).joinToString("") { "<th>列 $it</th>" }
+    val tbody = (1..r).joinToString("") {
+        "<tr>" + (1..c).joinToString("") { "<td>内容</td>" } + "</tr>"
+    }
+    return "<table><thead><tr>$head</tr></thead><tbody>$tbody</tbody></table><p><br></p>"
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TableSizeDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (Int, Int) -> Unit,
+) {
+    var rows by remember { mutableStateOf(3) }
+    var cols by remember { mutableStateOf(3) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("插入表格") },
+        text = {
+            Column {
+                Text(
+                    "选择要插入的行数和列数（1~10）",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "预览：${rows} 行 × ${cols} 列",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(Modifier.height(12.dp))
+                Text("行数")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { rows = rows.coerceAtLeast(1) - 1 }, enabled = rows > 1) {
+                        Text("−", style = MaterialTheme.typography.titleMedium)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(rows.toString(), style = MaterialTheme.typography.titleLarge)
+                    Spacer(Modifier.width(8.dp))
+                    IconButton(onClick = { rows = rows.coerceAtMost(10) + 1 }, enabled = rows < 10) {
+                        Text("+", style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                Text("列数")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { cols = cols.coerceAtLeast(1) - 1 }, enabled = cols > 1) {
+                        Text("−", style = MaterialTheme.typography.titleMedium)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(cols.toString(), style = MaterialTheme.typography.titleLarge)
+                    Spacer(Modifier.width(8.dp))
+                    IconButton(onClick = { cols = cols.coerceAtMost(10) + 1 }, enabled = cols < 10) {
+                        Text("+", style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(rows, cols) }) { Text("插入") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        },
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

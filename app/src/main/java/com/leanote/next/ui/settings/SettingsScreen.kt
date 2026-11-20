@@ -281,6 +281,9 @@ private fun ThemePaletteChips(
         ThemePalette.LAVENDER to ("薰衣草" to Color(0xFF6D4FA3)),
         ThemePalette.SUNSET to ("日落橙" to Color(0xFFB04E22)),
         ThemePalette.GRAPHITE to ("石墨灰" to Color(0xFF4E635E)),
+        ThemePalette.CREAM_PAPER to ("泛黄纸" to Color(0xFF8A5A00)),
+        ThemePalette.MONOCHROME to ("极简黑白" to Color(0xFF1A1A1A)),
+        ThemePalette.NEON to ("霓虹科技" to Color(0xFF00B56B)),
     )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items.forEach { (palette, pair) ->
