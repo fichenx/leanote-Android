@@ -184,7 +184,10 @@ internal fun buildHtmlDocument(
             line-height: 1.9 !important; letter-spacing: 0.1px; padding: 6px 18px 56px 18px !important;
             color: ${hex(foreground)} !important;
           }
-          p, div, span, li, td, th, blockquote { font-size: inherit; }
+          p, div, span, font, li, td, th, blockquote {
+            font-size: inherit !important;
+            line-height: inherit !important;
+          }
           h1, h2, h3, h4, h5, h6 { color: ${hex(foreground)} !important; margin: 1.4em 0 0.7em !important; }
           h1 { font-size: 23px !important; } h2 { font-size: 20px !important; }
           h3 { font-size: 18px !important; } h4 { font-size: 16.5px !important; }
