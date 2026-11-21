@@ -23,6 +23,8 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Notes
 import androidx.compose.material.icons.rounded.Settings
@@ -38,6 +40,8 @@ import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -172,7 +176,11 @@ fun HomeDrawerContent(
             }
         }
 
-        val tree = flattenNotebooks(notebooks)
+        val collapsedIds = remember { mutableStateOf(emptySet<String>()) }
+        val tree = flattenNotebooks(notebooks, collapsedIds.value)
+        val parentIds = remember(notebooks) {
+            notebooks.map { it.parentServerId }.filter { it.isNotBlank() }.toSet()
+        }
         if (tree.isEmpty()) {
             Text(
                 "还没有笔记本",
@@ -182,10 +190,21 @@ fun HomeDrawerContent(
             )
         }
         tree.forEach { (notebook, depth) ->
+            val hasChildren = notebook.serverId in parentIds
+            val expanded = notebook.serverId !in collapsedIds.value
             NotebookRow(
                 notebook = notebook,
                 depth = depth,
                 selected = !trashSelected && selectedNotebookId == notebook.serverId,
+                hasChildren = hasChildren,
+                expanded = expanded,
+                onToggleExpand = {
+                    collapsedIds.value = if (expanded) {
+                        collapsedIds.value + notebook.serverId
+                    } else {
+                        collapsedIds.value - notebook.serverId
+                    }
+                },
                 onClick = { onSelectNotebook(notebook.serverId) },
                 onMenu = { onNotebookMenu(notebook) },
             )
@@ -258,6 +277,9 @@ private fun NotebookRow(
     notebook: NotebookEntity,
     depth: Int,
     selected: Boolean,
+    hasChildren: Boolean = false,
+    expanded: Boolean = true,
+    onToggleExpand: () -> Unit = {},
     onClick: () -> Unit,
     onMenu: () -> Unit,
 ) {
@@ -273,20 +295,32 @@ private fun NotebookRow(
     ) {
         Row(
             modifier = Modifier.padding(
-                start = 12.dp + (depth * 16).dp,
+                start = 8.dp + (depth * 16).dp,
                 end = 4.dp,
-                top = 9.dp,
-                bottom = 9.dp,
+                top = 7.dp,
+                bottom = 7.dp,
             ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (hasChildren) {
+                IconButton(onClick = onToggleExpand, modifier = Modifier.size(24.dp)) {
+                    Icon(
+                        if (expanded) Icons.Rounded.KeyboardArrowDown else Icons.Rounded.KeyboardArrowRight,
+                        contentDescription = if (expanded) "收起子分类" else "展开子分类",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                Spacer(Modifier.width(24.dp))
+            }
             Icon(
                 if (selected) Icons.Outlined.FolderOpen else Icons.Outlined.Folder,
                 contentDescription = null,
                 tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp),
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(10.dp))
             Text(
                 notebook.title,
                 style = MaterialTheme.typography.bodyMedium,
@@ -307,7 +341,10 @@ private fun NotebookRow(
 }
 
 /** 把 notebook 列表按父子关系展开成一维列表，孤儿节点兜底放到顶层。 */
-fun flattenNotebooks(notebooks: List<NotebookEntity>): List<Pair<NotebookEntity, Int>> {
+fun flattenNotebooks(
+    notebooks: List<NotebookEntity>,
+    collapsed: Set<String> = emptySet(),
+): List<Pair<NotebookEntity, Int>> {
     val byParent = notebooks.groupBy { it.parentServerId }
     val result = mutableListOf<Pair<NotebookEntity, Int>>()
     val visited = mutableSetOf<String>()
@@ -316,7 +353,7 @@ fun flattenNotebooks(notebooks: List<NotebookEntity>): List<Pair<NotebookEntity,
         byParent[parentId]?.sortedWith(compareBy({ it.seq }, { it.title }))?.forEach { nb ->
             if (!visited.add(nb.serverId)) return@forEach
             result.add(nb to depth)
-            visit(nb.serverId, depth + 1)
+            if (nb.serverId !in collapsed) visit(nb.serverId, depth + 1)
         }
     }
     visit("", 0)

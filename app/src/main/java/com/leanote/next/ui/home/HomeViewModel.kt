@@ -249,10 +249,16 @@ class HomeViewModel @Inject constructor(
         if (syncing.value) return
         viewModelScope.launch {
             syncing.value = true
-            val summary = syncEngine.sync()
+            // 服务器不可达时不能抛到主线程，否则应用会直接闪退
+            val summary = runCatching { syncEngine.sync() }.getOrElse { error ->
+                syncing.value = false
+                if (!silent) messages.emit("同步失败：${error.message ?: "无法连接服务器"}")
+                return@launch
+            }
             syncing.value = false
-            accountStore.current()?.let { authRepository.refreshProfile(it) }
-            WidgetUpdater.refresh(appContext)
+            // 头像随笔记一起同步；失败时静默忽略，不影响本地使用
+            runCatching { accountStore.current()?.let { authRepository.refreshProfile(it) } }
+            runCatching { WidgetUpdater.refresh(appContext) }
             if (!silent || !summary.success) {
                 val message = if (summary.success) {
                     when {
@@ -328,6 +334,31 @@ class HomeViewModel @Inject constructor(
                     messages.emit("已删除笔记本")
                 }
                 .onFailure { messages.emit(it.message ?: "删除失败") }
+        }
+    }
+
+    /**
+     * 移动笔记本。[newParentServerId] 为空表示移动到顶层成为一级分类；
+     * [releaseNotes] 为 true 时不保留笔记本本身，而是把它下面的笔记全部移入目标笔记本。
+     */
+    fun moveNotebook(notebook: NotebookEntity, newParentServerId: String, releaseNotes: Boolean) {
+        viewModelScope.launch {
+            val account = session.value.account ?: return@launch
+            runCatching {
+                if (releaseNotes) {
+                    notebookRepository.releaseInto(account, notebook, newParentServerId)
+                } else {
+                    notebookRepository.move(account, notebook, newParentServerId)
+                }
+            }.onSuccess {
+                messages.emit(
+                    when {
+                        releaseNotes -> "已把「${notebook.title}」的笔记全部移入目标笔记本"
+                        newParentServerId.isBlank() -> "已移动到顶层"
+                        else -> "已移动为子分类"
+                    },
+                )
+            }.onFailure { messages.emit(it.message ?: "移动失败") }
         }
     }
 

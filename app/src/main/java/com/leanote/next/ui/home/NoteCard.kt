@@ -42,12 +42,15 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.leanote.next.data.local.NoteEntity
 import com.leanote.next.data.model.Account
+import com.leanote.next.data.model.UiDensity
 import com.leanote.next.data.repo.ImageRepository
 import com.leanote.next.ui.components.NoteMetaLine
 import com.leanote.next.ui.components.TagRow
 import com.leanote.next.ui.components.notePreview
+import com.leanote.next.ui.theme.LocalNoteCardBorder
 import com.leanote.next.ui.theme.LocalSurfaceEffect
 import com.leanote.next.ui.theme.LocalSurfaceTranslucency
+import com.leanote.next.ui.theme.LocalUiDensity
 import com.leanote.next.ui.theme.cardColor
 import com.leanote.next.ui.theme.sheenBrush
 import dagger.hilt.android.EntryPointAccessors
@@ -84,11 +87,40 @@ fun NoteCard(
 
     val effect = LocalSurfaceEffect.current
     val translucency = LocalSurfaceTranslucency.current
+    val density = LocalUiDensity.current
+    val showBorder = LocalNoteCardBorder.current
     val container = if (selected) {
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
     } else {
         // 跟随「笔记卡片」自定义颜色，并叠加材质效果的半透明。
         effect.cardColor(MaterialTheme.colorScheme, translucency = translucency)
+    }
+    // 边框颜色跟随自定义配色里的「边框」，可在设置中关闭。
+    val border = when {
+        selected -> androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.45f),
+        )
+        showBorder -> androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outline.copy(alpha = 0.55f),
+        )
+        else -> null
+    }
+    val horizontalPadding = when (density) {
+        UiDensity.COMPACT -> 14.dp
+        UiDensity.STANDARD -> 18.dp
+        UiDensity.COMFORTABLE -> 20.dp
+    }
+    val verticalPadding = when (density) {
+        UiDensity.COMPACT -> 8.dp
+        UiDensity.STANDARD -> 12.dp
+        UiDensity.COMFORTABLE -> 16.dp
+    }
+    val previewLines = when (density) {
+        UiDensity.COMPACT -> 1
+        UiDensity.STANDARD -> 2
+        UiDensity.COMFORTABLE -> 3
     }
 
     Box(modifier) {
@@ -96,11 +128,7 @@ fun NoteCard(
             color = container,
             shape = MaterialTheme.shapes.large,
             tonalElevation = if (selected) 0.dp else 1.dp,
-            border = androidx.compose.foundation.BorderStroke(
-                1.dp,
-                if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
-                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
-            ),
+            border = border,
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(MaterialTheme.shapes.large)
@@ -110,7 +138,14 @@ fun NoteCard(
                 ),
         ) {
             Box {
-                Column(Modifier.padding(start = 18.dp, end = 8.dp, top = 12.dp, bottom = 14.dp)) {
+                Column(
+                    Modifier.padding(
+                        start = horizontalPadding,
+                        end = 8.dp,
+                        top = verticalPadding,
+                        bottom = verticalPadding + 2.dp,
+                    ),
+                ) {
                     Row(verticalAlignment = Alignment.Top) {
                         Column(Modifier.weight(1f)) {
                             Text(
@@ -125,7 +160,7 @@ fun NoteCard(
                                 text = notePreview(note),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 2,
+                                maxLines = previewLines,
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }

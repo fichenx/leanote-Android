@@ -27,25 +27,27 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontSynthesis
 import com.leanote.next.data.model.SurfaceEffect
+import com.leanote.next.data.model.UiDensity
 
-private val Ink = Color(0xFF191C1B)
-private val Paper = Color(0xFFFBFAF6)
-private val Teal = Color(0xFF0B6B5D)
-private val TealLight = Color(0xFF98D5C9)
+private val Ink = Color(0xFF1B1A17)
+/** 奶白色纸张背景。 */
+private val Paper = Color(0xFFFDFBF4)
+private val Teal = Color(0xFF0F766E)
+private val TealLight = Color(0xFF5EEAD4)
 
 private val LightColors = lightColorScheme(
     primary = Teal,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFB4F1E5),
-    onPrimaryContainer = Color(0xFF002A24),
-    secondary = Color(0xFF4B635C),
+    primaryContainer = Color(0xFFCCFBF1),
+    onPrimaryContainer = Color(0xFF042F2C),
+    secondary = Color(0xFF3F5F5A),
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFCDE8DE),
-    onSecondaryContainer = Color(0xFF082019),
-    tertiary = Color(0xFF8A5A00),
+    secondaryContainer = Color(0xFFD5E8E3),
+    onSecondaryContainer = Color(0xFF08201D),
+    tertiary = Color(0xFFB45309),
     onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFFFDF9C),
-    onTertiaryContainer = Color(0xFF2C1A00),
+    tertiaryContainer = Color(0xFFFDE8C3),
+    onTertiaryContainer = Color(0xFF331E00),
     error = Color(0xFFBA1A1A),
     onError = Color.White,
     errorContainer = Color(0xFFFFDAD6),
@@ -54,34 +56,34 @@ private val LightColors = lightColorScheme(
     onBackground = Ink,
     surface = Paper,
     onSurface = Ink,
-    surfaceVariant = Color(0xFFDBE5E1),
-    onSurfaceVariant = Color(0xFF3F4946),
-    outline = Color(0xFF6F7976),
-    outlineVariant = Color(0xFFBFC9C5),
+    surfaceVariant = Color(0xFFE7E1D2),
+    onSurfaceVariant = Color(0xFF4A463C),
+    outline = Color(0xFF77705F),
+    outlineVariant = Color(0xFFC9C2B0),
     surfaceTint = Teal,
     inverseSurface = Color(0xFF2E3130),
-    inverseOnSurface = Color(0xFFF0F1ED),
+    inverseOnSurface = Color(0xFFF4F0E6),
     inversePrimary = TealLight,
-    surfaceContainerLowest = Color(0xFFFFFFFF),
-    surfaceContainerLow = Color(0xFFF5F4F0),
-    surfaceContainer = Color(0xFFEFEEE9),
-    surfaceContainerHigh = Color(0xFFE9E8E3),
-    surfaceContainerHighest = Color(0xFFE3E2DD),
+    surfaceContainerLowest = Color(0xFFFFFEFA),
+    surfaceContainerLow = Color(0xFFF8F4EA),
+    surfaceContainer = Color(0xFFF2EDE1),
+    surfaceContainerHigh = Color(0xFFECE6D8),
+    surfaceContainerHighest = Color(0xFFE6DFD0),
 )
 
 private val DarkColors = darkColorScheme(
     primary = TealLight,
     onPrimary = Color(0xFF003731),
-    primaryContainer = Color(0xFF005047),
-    onPrimaryContainer = Color(0xFFB4F1E5),
-    secondary = Color(0xFFB1CCC2),
-    onSecondary = Color(0xFF1D352E),
-    secondaryContainer = Color(0xFF334B44),
+    primaryContainer = Color(0xFF115E59),
+    onPrimaryContainer = Color(0xFFCCFBF1),
+    secondary = Color(0xFF9CC5BD),
+    onSecondary = Color(0xFF0F2A25),
+    secondaryContainer = Color(0xFF2F4A45),
     onSecondaryContainer = Color(0xFFCDE8DE),
-    tertiary = Color(0xFFF2BE5C),
+    tertiary = Color(0xFFFBBF24),
     onTertiary = Color(0xFF472A00),
     tertiaryContainer = Color(0xFF663E00),
-    onTertiaryContainer = Color(0xFFFFDF9C),
+    onTertiaryContainer = Color(0xFFFFE7B0),
     error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),
     errorContainer = Color(0xFF93000A),
@@ -124,87 +126,87 @@ private fun paletteColors(palette: ThemePalette, dark: Boolean): PaletteColors {
     if (dark) {
         return when (palette) {
             ThemePalette.FOREST -> PaletteColors(
-                Color(0xFF98D5C9), Color(0xFF003731), Color(0xFF005047), Color(0xFFB4F1E5),
-                Color(0xFFB1CCC2), Color(0xFF1D352E), Color(0xFF334B44), Color(0xFFCDE8DE),
-                Color(0xFFF2BE5C), Color(0xFF472A00), Color(0xFF663E00), Color(0xFFFFDF9C),
+                Color(0xFF5EEAD4), Color(0xFF003731), Color(0xFF115E59), Color(0xFFCCFBF1),
+                Color(0xFF9CC5BD), Color(0xFF0F2A25), Color(0xFF2F4A45), Color(0xFFCDE8DE),
+                Color(0xFFFBBF24), Color(0xFF472A00), Color(0xFF663E00), Color(0xFFFFE7B0),
             )
             ThemePalette.OCEAN -> PaletteColors(
-                Color(0xFFA9C7FF), Color(0xFF00325C), Color(0xFF00497F), Color(0xFFD6E3FF),
-                Color(0xFFBAC8DA), Color(0xFF243141), Color(0xFF3B4858), Color(0xFFD6E3F7),
-                Color(0xFF80D4DA), Color(0xFF00363A), Color(0xFF004F53), Color(0xFF9CF1F5),
+                Color(0xFF93B4FF), Color(0xFF002E69), Color(0xFF1E3A8A), Color(0xFFDBE6FF),
+                Color(0xFFB4C6E7), Color(0xFF1B2A3D), Color(0xFF3B4858), Color(0xFFD6E3F7),
+                Color(0xFF67E8F9), Color(0xFF00363A), Color(0xFF004F53), Color(0xFF9CF1F5),
             )
             ThemePalette.LAVENDER -> PaletteColors(
-                Color(0xFFD4BBFF), Color(0xFF3F1E6F), Color(0xFF563787), Color(0xFFEBDCFF),
-                Color(0xFFCDC2DB), Color(0xFF342D42), Color(0xFF4B4358), Color(0xFFE9DEF8),
-                Color(0xFFFFB0C8), Color(0xFF4A1526), Color(0xFF633B48), Color(0xFFFFD8E4),
+                Color(0xFFC4B5FD), Color(0xFF2E1065), Color(0xFF4C1D95), Color(0xFFEDE9FE),
+                Color(0xFFC9BEDB), Color(0xFF342D42), Color(0xFF4B4358), Color(0xFFE9DEF8),
+                Color(0xFFF9A8D4), Color(0xFF4A1526), Color(0xFF633B48), Color(0xFFFFD8E4),
             )
             ThemePalette.SUNSET -> PaletteColors(
-                Color(0xFFFFB693), Color(0xFF5C1900), Color(0xFF7E2F08), Color(0xFFFFDBCB),
+                Color(0xFFFDBA74), Color(0xFF5C1900), Color(0xFF9A3412), Color(0xFFFFEDD5),
                 Color(0xFFE7BEB0), Color(0xFF442A20), Color(0xFF5D4036), Color(0xFFFFDBCB),
-                Color(0xFFDBC64A), Color(0xFF383000), Color(0xFF504600), Color(0xFFF8E364),
+                Color(0xFFFCD34D), Color(0xFF383000), Color(0xFF504600), Color(0xFFF8E364),
             )
             ThemePalette.GRAPHITE -> PaletteColors(
-                Color(0xFFB5CCC5), Color(0xFF20342F), Color(0xFF364B45), Color(0xFFD1E7E0),
-                Color(0xFFB3CCC4), Color(0xFF25332F), Color(0xFF354B44), Color(0xFFCFE9E1),
-                Color(0xFFD8C58A), Color(0xFF3A2F00), Color(0xFF51461B), Color(0xFFF4E3A7),
+                Color(0xFFCBD5E1), Color(0xFF0F172A), Color(0xFF334155), Color(0xFFE2E8F0),
+                Color(0xFFB3C0CF), Color(0xFF1E293B), Color(0xFF364152), Color(0xFFE2E8F0),
+                Color(0xFF94A3B8), Color(0xFF1A2430), Color(0xFF2C3A47), Color(0xFFE7ECF3),
             )
             ThemePalette.CREAM_PAPER -> PaletteColors(
-                Color(0xFFD8C58A), Color(0xFF3A2F00), Color(0xFF51461B), Color(0xFFF4E3A7),
-                Color(0xFFBEB095), Color(0xFF31281A), Color(0xFF463B2B), Color(0xFFE9DDC6),
-                Color(0xFFCF9E6D), Color(0xFF3B1E00), Color(0xFF5F350A), Color(0xFFFFD8B0),
+                Color(0xFFE7C876), Color(0xFF3A2F00), Color(0xFF51461B), Color(0xFFF4E3A7),
+                Color(0xFFC9B98F), Color(0xFF31281A), Color(0xFF463B2B), Color(0xFFE9DDC6),
+                Color(0xFFD9A066), Color(0xFF3B1E00), Color(0xFF5F350A), Color(0xFFFFD8B0),
             )
             ThemePalette.MONOCHROME -> PaletteColors(
-                Color(0xFFE0E0E0), Color(0xFF1C1C1C), Color(0xFF3C3C3C), Color(0xFFF4F4F4),
-                Color(0xFFCACACA), Color(0xFF2B2B2B), Color(0xFF484848), Color(0xFFDDDDDD),
-                Color(0xFFB0B0B0), Color(0xFF1E1E1E), Color(0xFF3F3F3F), Color(0xFFE5E5E5),
+                Color(0xFFE5E7EB), Color(0xFF111827), Color(0xFF374151), Color(0xFFF9FAFB),
+                Color(0xFF9CA3AF), Color(0xFF1F2937), Color(0xFF374151), Color(0xFFE5E7EB),
+                Color(0xFF6B7280), Color(0xFF111827), Color(0xFF4B5563), Color(0xFFF3F4F6),
             )
             ThemePalette.NEON -> PaletteColors(
-                Color(0xFF00FF9D), Color(0xFF00210F), Color(0xFF003A1D), Color(0xFF5DFFC0),
-                Color(0xFF4ADE80), Color(0xFF00210F), Color(0xFF003A1D), Color(0xFFA7F3D0),
-                Color(0xFFFF4DC4), Color(0xFF3C0029), Color(0xFF5C003D), Color(0xFFFFB4DE),
+                Color(0xFFF9A8C4), Color(0xFF4A0522), Color(0xFF831843), Color(0xFFFFE4EE),
+                Color(0xFFD6B4C1), Color(0xFF3A1D28), Color(0xFF53323E), Color(0xFFF5DDE4),
+                Color(0xFF7DD3FC), Color(0xFF00344A), Color(0xFF00526E), Color(0xFFCFF5FF),
             )
         }
     }
     return when (palette) {
         ThemePalette.FOREST -> PaletteColors(
-            Teal, Color.White, Color(0xFFB4F1E5), Color(0xFF002A24),
-            Color(0xFF4B635C), Color.White, Color(0xFFCDE8DE), Color(0xFF082019),
-            Color(0xFF8A5A00), Color.White, Color(0xFFFFDF9C), Color(0xFF2C1A00),
+            Teal, Color.White, Color(0xFFCCFBF1), Color(0xFF042F2C),
+            Color(0xFF3F5F5A), Color.White, Color(0xFFD5E8E3), Color(0xFF08201D),
+            Color(0xFFB45309), Color.White, Color(0xFFFDE8C3), Color(0xFF331E00),
         )
         ThemePalette.OCEAN -> PaletteColors(
-            Color(0xFF1565C0), Color.White, Color(0xFFD6E3FF), Color(0xFF001B3D),
-            Color(0xFF4F6072), Color.White, Color(0xFFD6E3F7), Color(0xFF0B1B29),
-            Color(0xFF00696E), Color.White, Color(0xFF9CF1F5), Color(0xFF002021),
+            Color(0xFF1D4ED8), Color.White, Color(0xFFDBE6FF), Color(0xFF00174B),
+            Color(0xFF44546F), Color.White, Color(0xFFDCE3F0), Color(0xFF0E1B2C),
+            Color(0xFF0E7490), Color.White, Color(0xFFCFF5F7), Color(0xFF002021),
         )
         ThemePalette.LAVENDER -> PaletteColors(
-            Color(0xFF6D4FA3), Color.White, Color(0xFFEBDCFF), Color(0xFF290055),
-            Color(0xFF635B71), Color.White, Color(0xFFE9DEF8), Color(0xFF1F182C),
-            Color(0xFF7D5260), Color.White, Color(0xFFFFD8E4), Color(0xFF31111D),
+            Color(0xFF6D28D9), Color.White, Color(0xFFEADDFF), Color(0xFF22005D),
+            Color(0xFF5D5470), Color.White, Color(0xFFE6DFF5), Color(0xFF1B1626),
+            Color(0xFF9D3C6B), Color.White, Color(0xFFFFD9E6), Color(0xFF3B071F),
         )
         ThemePalette.SUNSET -> PaletteColors(
-            Color(0xFFB04E22), Color.White, Color(0xFFFFDBCB), Color(0xFF3B0900),
-            Color(0xFF77574A), Color.White, Color(0xFFFFDBCB), Color(0xFF2C160D),
-            Color(0xFF6A5F00), Color.White, Color(0xFFF8E364), Color(0xFF201C00),
+            Color(0xFFC2410C), Color.White, Color(0xFFFFDBCD), Color(0xFF3A0B00),
+            Color(0xFF6E5245), Color.White, Color(0xFFF3DED5), Color(0xFF291710),
+            Color(0xFFA16207), Color.White, Color(0xFFFAE8B8), Color(0xFF2A1D00),
         )
         ThemePalette.GRAPHITE -> PaletteColors(
-            Color(0xFF4E635E), Color.White, Color(0xFFD1E7E0), Color(0xFF0A1F1B),
-            Color(0xFF4B635C), Color.White, Color(0xFFCFE9E1), Color(0xFF082019),
-            Color(0xFF6B5D2F), Color.White, Color(0xFFF4E3A7), Color(0xFF211B00),
+            Color(0xFF334155), Color.White, Color(0xFFDDE3EC), Color(0xFF0B1220),
+            Color(0xFF4B5A6E), Color.White, Color(0xFFE0E7EF), Color(0xFF131B26),
+            Color(0xFF64748B), Color.White, Color(0xFFE7ECF3), Color(0xFF1B2430),
         )
         ThemePalette.CREAM_PAPER -> PaletteColors(
-            Color(0xFF8A5A00), Color.White, Color(0xFFFFDF9C), Color(0xFF2C1A00),
-            Color(0xFF7A6A47), Color.White, Color(0xFFF5E7C7), Color(0xFF251E0F),
+            Color(0xFFA16207), Color.White, Color(0xFFF6E7C1), Color(0xFF2A1D00),
+            Color(0xFF7A6A47), Color.White, Color(0xFFEFE5D0), Color(0xFF251E0F),
             Color(0xFF5E3A14), Color.White, Color(0xFFE8C8A0), Color(0xFF1D0F00),
         )
         ThemePalette.MONOCHROME -> PaletteColors(
-            Color(0xFF1A1A1A), Color.White, Color(0xFFE0E0E0), Color(0xFF000000),
-            Color(0xFF4A4A4A), Color.White, Color(0xFFEAEAEA), Color(0xFF1A1A1A),
-            Color(0xFF666666), Color.White, Color(0xFFF0F0F0), Color(0xFF222222),
+            Color(0xFF111827), Color.White, Color(0xFFE5E7EB), Color(0xFF000000),
+            Color(0xFF374151), Color.White, Color(0xFFE5E7EB), Color(0xFF111827),
+            Color(0xFF4B5563), Color.White, Color(0xFFF3F4F6), Color(0xFF111827),
         )
         ThemePalette.NEON -> PaletteColors(
-            Color(0xFF00B56B), Color.White, Color(0xFF00FF9D), Color(0xFF00210F),
-            Color(0xFF1F6B4A), Color.White, Color(0xFFA7F3D0), Color(0xFF00210F),
-            Color(0xFFC2007E), Color.White, Color(0xFFFF4DC4), Color(0xFF3C0029),
+            Color(0xFFBE185D), Color.White, Color(0xFFFFD9E4), Color(0xFF3F0018),
+            Color(0xFF7C5463), Color.White, Color(0xFFF5DDE4), Color(0xFF2A1520),
+            Color(0xFF0369A1), Color.White, Color(0xFFCFE9FF), Color(0xFF001B33),
         )
     }
 }
@@ -427,6 +429,8 @@ fun LeanoteTheme(settings: AppSettings, content: @Composable () -> Unit) {
     CompositionLocalProvider(
         LocalSurfaceEffect provides settings.surfaceEffect,
         LocalSurfaceTranslucency provides settings.surfaceTranslucency,
+        LocalUiDensity provides settings.density,
+        LocalNoteCardBorder provides settings.noteCardBorder,
     ) {
         MaterialTheme(
             colorScheme = baseScheme.withCustomColors(settings.customColors),
@@ -442,6 +446,12 @@ val LocalSurfaceEffect = staticCompositionLocalOf { SurfaceEffect.NONE }
 
 /** 当前材质透明强度（0–60），由主题统一提供。 */
 val LocalSurfaceTranslucency = staticCompositionLocalOf { 20 }
+
+/** 当前界面紧凑度，由主题统一提供。 */
+val LocalUiDensity = staticCompositionLocalOf { UiDensity.STANDARD }
+
+/** 笔记卡片是否显示边框，由主题统一提供。 */
+val LocalNoteCardBorder = staticCompositionLocalOf { true }
 
 /** 把透明强度换算成前景色 alpha：磨砂克制一些，亚克力更通透。 */
 private fun SurfaceEffect.materialAlpha(translucency: Int): Float {
