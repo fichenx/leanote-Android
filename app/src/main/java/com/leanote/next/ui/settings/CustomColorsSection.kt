@@ -403,7 +403,7 @@ private fun pickWheel(
     val dx = offset.x - centerX
     val dy = offset.y - centerY
     val distance = kotlin.math.hypot(dx, dy)
-    val degree = (Math.toDegrees(kotlin.math.atan2(dy, dx)) + 360.0) % 360.0
+    val degree = (Math.toDegrees(kotlin.math.atan2(dy, dx).toDouble()) + 360.0) % 360.0
     onPick(degree.toFloat(), (distance / radius).coerceIn(0f, 1f))
 }
 
