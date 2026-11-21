@@ -108,6 +108,9 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE accountId = :accountId AND isDirty = 1")
     suspend fun getDirty(accountId: String): List<NoteEntity>
 
+    @Query("SELECT * FROM notes WHERE accountId = :accountId AND notebookServerId = :notebookServerId")
+    suspend fun getInNotebook(accountId: String, notebookServerId: String): List<NoteEntity>
+
     @Query("SELECT * FROM notes WHERE accountId = :accountId AND isTrash = 0 ORDER BY updatedTime DESC LIMIT :limit")
     suspend fun recent(accountId: String, limit: Int): List<NoteEntity>
 

@@ -41,9 +41,6 @@ class SettingsViewModel @Inject constructor(
     private val _uploadingAvatar = MutableStateFlow(false)
     val uploadingAvatar = _uploadingAvatar.asStateFlow()
 
-    private val _refreshingProfile = MutableStateFlow(false)
-    val refreshingProfile = _refreshingProfile.asStateFlow()
-
     val messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val loggedOut = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
@@ -89,31 +86,6 @@ class SettingsViewModel @Inject constructor(
         settingsStore.setSurfaceTranslucency(value)
     }
 
-    /** 手动从服务器拉取头像与用户名，解决其他端更换头像后本机不同步的问题。 */
-    fun refreshProfile() {
-        if (_refreshingProfile.value) return
-        viewModelScope.launch {
-            val current = accountStore.current()
-            if (current == null) {
-                messages.emit("请先登录账户")
-                return@launch
-            }
-            _refreshingProfile.value = true
-            val result = runCatching { authRepository.refreshProfile(current, forceAvatarRefresh = true) }
-            _refreshingProfile.value = false
-            val updated = result.getOrNull()
-            messages.emit(
-                when {
-                    result.isFailure ->
-                        result.exceptionOrNull()?.message ?: "头像同步失败"
-                    updated == null -> "服务器未返回用户信息，请检查服务器地址或 token"
-                    updated.logo.isBlank() -> "服务器尚未设置头像"
-                    else -> "头像已从服务器同步"
-                },
-            )
-        }
-    }
-
     fun setCustomColor(role: String, hex: String?) = viewModelScope.launch {
         settingsStore.setCustomColor(role, hex)
     }
@@ -138,7 +110,17 @@ class SettingsViewModel @Inject constructor(
         if (_syncing.value) return
         viewModelScope.launch {
             _syncing.value = true
-            val summary = syncEngine.sync()
+            val current = accountStore.current()
+            // 服务器不可达时不能把异常抛到主线程
+            val summary = runCatching { syncEngine.sync() }.getOrElse { error ->
+                _syncing.value = false
+                messages.emit("同步失败：${error.message ?: "无法连接服务器"}")
+                return@launch
+            }
+            // 同步笔记时一并同步头像（含在别处修改过的头像）
+            if (current != null) {
+                runCatching { authRepository.refreshProfile(current) }
+            }
             _syncing.value = false
             messages.emit(
                 if (summary.success) {
@@ -148,6 +130,14 @@ class SettingsViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    fun setDensity(density: com.leanote.next.data.model.UiDensity) = viewModelScope.launch {
+        settingsStore.setDensity(density)
+    }
+
+    fun setNoteCardBorder(enabled: Boolean) = viewModelScope.launch {
+        settingsStore.setNoteCardBorder(enabled)
     }
 
     fun logout() {

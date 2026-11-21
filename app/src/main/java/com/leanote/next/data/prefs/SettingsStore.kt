@@ -13,6 +13,7 @@ import com.leanote.next.data.model.SortMode
 import com.leanote.next.data.model.SurfaceEffect
 import com.leanote.next.data.model.ThemeMode
 import com.leanote.next.data.model.ThemePalette
+import com.leanote.next.data.model.UiDensity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -35,6 +36,8 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
     private val surfaceEffectKey = stringPreferencesKey("surface_effect")
     private val surfaceTranslucencyKey = intPreferencesKey("surface_translucency")
     private val customColorsKey = stringPreferencesKey("custom_colors")
+    private val densityKey = stringPreferencesKey("ui_density")
+    private val noteCardBorderKey = booleanPreferencesKey("note_card_border")
     private val autoSyncKey = booleanPreferencesKey("auto_sync")
     private val sortKey = stringPreferencesKey("sort_mode")
     private val markdownKey = booleanPreferencesKey("default_markdown")
@@ -47,6 +50,8 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
             surfaceEffect = runCatching { SurfaceEffect.valueOf(prefs[surfaceEffectKey] ?: "") }.getOrDefault(SurfaceEffect.NONE),
             surfaceTranslucency = (prefs[surfaceTranslucencyKey] ?: 20).coerceIn(0, 60),
             customColors = decodeCustomColors(prefs[customColorsKey]),
+            density = runCatching { UiDensity.valueOf(prefs[densityKey] ?: "") }.getOrDefault(UiDensity.STANDARD),
+            noteCardBorder = prefs[noteCardBorderKey] ?: true,
             autoSync = prefs[autoSyncKey] ?: true,
             sortMode = runCatching { SortMode.valueOf(prefs[sortKey] ?: "") }.getOrDefault(SortMode.UPDATED_DESC),
             defaultMarkdown = prefs[markdownKey] ?: true,
@@ -78,6 +83,10 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
     }
 
     suspend fun clearCustomColors() = dataStore.edit { it.remove(customColorsKey) }
+
+    suspend fun setDensity(density: UiDensity) = dataStore.edit { it[densityKey] = density.name }
+
+    suspend fun setNoteCardBorder(enabled: Boolean) = dataStore.edit { it[noteCardBorderKey] = enabled }
 
     suspend fun setAutoSync(enabled: Boolean) = dataStore.edit { it[autoSyncKey] = enabled }
 

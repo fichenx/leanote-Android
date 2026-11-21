@@ -60,6 +60,9 @@ enum class SortMode { UPDATED_DESC, UPDATED_ASC, CREATED_DESC, TITLE_ASC }
 /** 界面材质效果。 */
 enum class SurfaceEffect { NONE, FROSTED, ACRYLIC }
 
+/** 列表与卡片的紧凑程度。 */
+enum class UiDensity { COMPACT, STANDARD, COMFORTABLE }
+
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val palette: ThemePalette = ThemePalette.FOREST,
@@ -68,6 +71,9 @@ data class AppSettings(
     /** 材质透明强度，0–60，数值越大越透明。 */
     val surfaceTranslucency: Int = 20,
     val customColors: Map<String, String> = emptyMap(),
+    val density: UiDensity = UiDensity.STANDARD,
+    /** 笔记卡片是否显示边框，颜色跟随自定义配色中的「边框」。 */
+    val noteCardBorder: Boolean = true,
     val autoSync: Boolean = true,
     val sortMode: SortMode = SortMode.UPDATED_DESC,
     val defaultMarkdown: Boolean = true,

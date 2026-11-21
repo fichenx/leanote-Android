@@ -67,6 +67,7 @@ import com.leanote.next.data.model.SortMode
 import com.leanote.next.data.model.SurfaceEffect
 import com.leanote.next.data.model.ThemeMode
 import com.leanote.next.data.model.ThemePalette
+import com.leanote.next.data.model.UiDensity
 import com.leanote.next.ui.components.AccountAvatar
 import com.leanote.next.ui.components.ConfirmDialog
 import com.leanote.next.ui.theme.LocalSurfaceEffect
@@ -86,7 +87,6 @@ fun SettingsScreen(
     val account by viewModel.account.collectAsStateWithLifecycle()
     val syncing by viewModel.syncing.collectAsStateWithLifecycle()
     val uploadingAvatar by viewModel.uploadingAvatar.collectAsStateWithLifecycle()
-    val refreshingProfile by viewModel.refreshingProfile.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var confirmLogout by remember { mutableStateOf(false) }
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -139,10 +139,8 @@ fun SettingsScreen(
                         account = current,
                         syncing = syncing,
                         uploadingAvatar = uploadingAvatar,
-                        refreshingProfile = refreshingProfile,
                         onSync = viewModel::syncNow,
                         onPickAvatar = { avatarPicker.launch("image/*") },
-                        onRefreshProfile = viewModel::refreshProfile,
                     )
                 }
             }
@@ -241,6 +239,37 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    Spacer(Modifier.height(14.dp))
+                    SettingLabel("列表紧凑度", "调整笔记卡片的间距与预览行数")
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            UiDensity.COMPACT to "紧凑",
+                            UiDensity.STANDARD to "标准",
+                            UiDensity.COMFORTABLE to "宽松",
+                        ).forEach { (mode, label) ->
+                            AssistChip(
+                                onClick = { viewModel.setDensity(mode) },
+                                label = { Text(label) },
+                                shape = CircleShape,
+                                border = null,
+                                colors = AssistChipDefaults.assistChipColors(
+                                    containerColor = if (settings.density == mode) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainerHigh
+                                    },
+                                ),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    ToggleRow(
+                        title = "显示卡片边框",
+                        subtitle = "颜色跟随自定义配色中的「边框」",
+                        checked = settings.noteCardBorder,
+                        onCheckedChange = viewModel::setNoteCardBorder,
+                    )
                 }
             }
 
@@ -356,7 +385,6 @@ fun SettingsScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ThemePaletteChips(
     selected: ThemePalette,
@@ -364,40 +392,51 @@ private fun ThemePaletteChips(
     onSelect: (ThemePalette) -> Unit,
 ) {
     val items = listOf(
-        ThemePalette.FOREST to ("森野绿" to Color(0xFF0B6B5D)),
-        ThemePalette.OCEAN to ("海洋蓝" to Color(0xFF1565C0)),
-        ThemePalette.LAVENDER to ("薰衣草" to Color(0xFF6D4FA3)),
-        ThemePalette.SUNSET to ("日落橙" to Color(0xFFB04E22)),
-        ThemePalette.GRAPHITE to ("石墨灰" to Color(0xFF4E635E)),
-        ThemePalette.CREAM_PAPER to ("泛黄纸" to Color(0xFF8A5A00)),
-        ThemePalette.MONOCHROME to ("极简黑白" to Color(0xFF1A1A1A)),
-        ThemePalette.NEON to ("霓虹科技" to Color(0xFF00B56B)),
+        ThemePalette.FOREST to ("森野" to Color(0xFF0F766E)),
+        ThemePalette.OCEAN to ("海洋" to Color(0xFF1D4ED8)),
+        ThemePalette.LAVENDER to ("薰衣草" to Color(0xFF6D28D9)),
+        ThemePalette.SUNSET to ("陶土" to Color(0xFFC2410C)),
+        ThemePalette.GRAPHITE to ("石墨" to Color(0xFF334155)),
+        ThemePalette.CREAM_PAPER to ("暖砂" to Color(0xFFA16207)),
+        ThemePalette.MONOCHROME to ("黑白" to Color(0xFF111827)),
+        ThemePalette.NEON to ("莓果" to Color(0xFFBE185D)),
     )
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items.forEach { (palette, pair) ->
-            val (label, color) = pair
-            AssistChip(
-                onClick = { if (enabled) onSelect(palette) },
-                enabled = enabled,
-                label = { Text(label) },
-                leadingIcon = {
-                    Box(
-                        Modifier
-                            .size(12.dp)
-                            .clip(CircleShape)
-                            .background(color),
+    // 固定 4 列 × 2 行
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.chunked(4).forEach { rowItems ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                rowItems.forEach { (palette, pair) ->
+                    val (label, color) = pair
+                    AssistChip(
+                        onClick = { if (enabled) onSelect(palette) },
+                        enabled = enabled,
+                        label = {
+                            Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        },
+                        leadingIcon = {
+                            Box(
+                                Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(color),
+                            )
+                        },
+                        shape = CircleShape,
+                        border = null,
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = if (selected == palette) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHigh
+                            },
+                        ),
+                        modifier = Modifier.weight(1f),
                     )
-                },
-                shape = CircleShape,
-                border = null,
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = if (selected == palette) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    },
-                ),
-            )
+                }
+            }
         }
     }
 }
@@ -407,107 +446,81 @@ private fun AccountCard(
     account: Account,
     syncing: Boolean,
     uploadingAvatar: Boolean,
-    refreshingProfile: Boolean,
     onSync: () -> Unit,
     onPickAvatar: () -> Unit,
-    onRefreshProfile: () -> Unit,
 ) {
     Surface(
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
         shape = MaterialTheme.shapes.large,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(18.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    contentAlignment = Alignment.BottomEnd,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .clickable(enabled = !uploadingAvatar, onClick = onPickAvatar),
-                ) {
-                    AccountAvatar(account, size = 56.dp)
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                contentAlignment = Alignment.BottomEnd,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .clickable(enabled = !uploadingAvatar, onClick = onPickAvatar),
+            ) {
+                AccountAvatar(account, size = 44.dp)
+                if (uploadingAvatar) {
                     Surface(
                         color = MaterialTheme.colorScheme.primary,
                         shape = CircleShape,
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(18.dp),
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(4.dp),
+                            strokeWidth = 1.5.dp,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        )
+                    }
+                } else {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = CircleShape,
+                        modifier = Modifier.size(16.dp),
                     ) {
                         Icon(
                             Icons.Rounded.PhotoCamera,
                             contentDescription = "更换头像",
                             tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.padding(4.dp),
+                            modifier = Modifier.padding(3.dp),
                         )
                     }
                 }
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        account.displayName,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        account.email,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        if (uploadingAvatar) "正在上传头像…" else "点击头像可更换",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                if (uploadingAvatar) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                }
             }
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = account.host,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(14.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onClick = onSync, enabled = !syncing) {
-                    if (syncing) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(Icons.Rounded.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (syncing) "同步中…" else "立即同步")
-                }
-                Spacer(Modifier.width(8.dp))
-                TextButton(onClick = onPickAvatar, enabled = !uploadingAvatar) {
-                    Icon(Icons.Rounded.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(if (uploadingAvatar) "上传中…" else "更换头像")
-                }
-            }
-            Spacer(Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = onRefreshProfile, enabled = !refreshingProfile) {
-                    if (refreshingProfile) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(Icons.Rounded.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
-                    }
-                    Spacer(Modifier.width(6.dp))
-                    Text(if (refreshingProfile) "同步中…" else "从服务器同步头像")
-                }
-                Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
                 Text(
-                    "在其他设备换过头像？",
+                    account.displayName,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    account.email,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
+            }
+            Spacer(Modifier.width(8.dp))
+            OutlinedButton(
+                onClick = onSync,
+                enabled = !syncing,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+            ) {
+                if (syncing) {
+                    CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Rounded.Sync, contentDescription = null, modifier = Modifier.size(16.dp))
+                }
+                Spacer(Modifier.width(6.dp))
+                Text(if (syncing) "同步中" else "立即同步", style = MaterialTheme.typography.labelMedium)
             }
         }
     }

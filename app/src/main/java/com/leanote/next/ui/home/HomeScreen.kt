@@ -63,7 +63,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -135,7 +136,9 @@ fun HomeScreen(
     var showMoveDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var showBulkDelete by remember { mutableStateOf(false) }
+    var notebookMoveTarget by remember { mutableStateOf<NotebookEntity?>(null) }
     var exportFormat by remember { mutableStateOf(com.leanote.next.data.transfer.ExportFormat.MARKDOWN) }
+    val density = com.leanote.next.ui.theme.LocalUiDensity.current
 
     val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree(),
@@ -450,7 +453,13 @@ fun HomeScreen(
                         } else {
                             LazyColumn(
                                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(
+                                    when (density) {
+                                        com.leanote.next.data.model.UiDensity.COMPACT -> 6.dp
+                                        com.leanote.next.data.model.UiDensity.STANDARD -> 10.dp
+                                        com.leanote.next.data.model.UiDensity.COMFORTABLE -> 14.dp
+                                    },
+                                ),
                             ) {
                                 items(state.notes, key = { it.localId }) { note ->
                                     NoteCard(
@@ -610,6 +619,15 @@ fun HomeScreen(
                         },
                     )
                     ListItem(
+                        headlineContent = { Text("移动到其他笔记本") },
+                        leadingContent = { Icon(Icons.Outlined.DriveFileMove, contentDescription = null) },
+                        colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
+                        modifier = Modifier.clickable {
+                            notebookMenuTarget = null
+                            notebookMoveTarget = notebook
+                        },
+                    )
+                    ListItem(
                         headlineContent = { Text("删除笔记本", color = MaterialTheme.colorScheme.error) },
                         leadingContent = {
                             Icon(Icons.Outlined.DeleteOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error)
@@ -667,6 +685,18 @@ fun HomeScreen(
                 deleteNoteTarget = null
             },
             onDismiss = { deleteNoteTarget = null },
+        )
+    }
+
+    notebookMoveTarget?.let { notebook ->
+        NotebookMoveDialog(
+            notebook = notebook,
+            notebooks = state.notebooks,
+            onDismiss = { notebookMoveTarget = null },
+            onConfirm = { parentId, release ->
+                notebookMoveTarget = null
+                viewModel.moveNotebook(notebook, parentId, release)
+            },
         )
     }
 
@@ -784,6 +814,117 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
             unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
             focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
         ),
+    )
+}
+
+@Composable
+private fun NotebookMoveDialog(
+    notebook: NotebookEntity,
+    notebooks: List<NotebookEntity>,
+    onDismiss: () -> Unit,
+    onConfirm: (parentId: String, release: Boolean) -> Unit,
+) {
+    var targetId by remember { mutableStateOf<String?>(null) }
+    var release by remember { mutableStateOf(false) }
+    val hasChildren = remember(notebooks, notebook) {
+        notebooks.any { it.parentServerId == notebook.serverId }
+    }
+    val blocked = remember(notebooks, notebook) {
+        val children = notebooks.groupBy { it.parentServerId }
+        val result = linkedSetOf(notebook.serverId)
+        fun walk(id: String) {
+            children[id]?.forEach { child -> if (result.add(child.serverId)) walk(child.serverId) }
+        }
+        walk(notebook.serverId)
+        result
+    }
+    val targets = remember(notebooks, blocked) {
+        flattenNotebooks(notebooks).filter { it.first.serverId !in blocked }
+    }
+    val isTopLevel = notebook.parentServerId.isBlank()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("移动「${notebook.title}」") },
+        text = {
+            Column {
+                Text(
+                    "选择目标位置",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (!isTopLevel) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.medium)
+                            .clickable { targetId = ""; release = false }
+                            .padding(vertical = 2.dp),
+                    ) {
+                        RadioButton(selected = targetId == "", onClick = { targetId = ""; release = false })
+                        Text("顶层（一级分类）", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                LazyColumn(Modifier.heightIn(max = 240.dp)) {
+                    items(targets) { (item, depth) ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(MaterialTheme.shapes.medium)
+                                .clickable { targetId = item.serverId; release = false }
+                                .padding(vertical = 2.dp, start = (depth * 12).dp),
+                        ) {
+                            RadioButton(
+                                selected = targetId == item.serverId,
+                                onClick = { targetId = item.serverId; release = false },
+                            )
+                            Text(
+                                item.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+                if (!targetId.isNullOrBlank()) {
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = !release,
+                            onClick = { release = false },
+                            label = { Text("作为子分类") },
+                        )
+                        FilterChip(
+                            selected = release,
+                            enabled = !hasChildren,
+                            onClick = { release = true },
+                            label = { Text("全部释放") },
+                        )
+                    }
+                    Text(
+                        when {
+                            hasChildren -> "它有子分类，只能作为子分类移动。"
+                            release -> "把其中的笔记全部移入目标笔记本，并删除当前笔记本。"
+                            else -> "保留笔记本，作为目标笔记本的子分类。"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(targetId ?: "", release) },
+                enabled = targetId != null,
+            ) { Text("移动") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        },
     )
 }
 
