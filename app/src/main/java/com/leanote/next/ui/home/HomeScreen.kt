@@ -875,7 +875,7 @@ private fun NotebookMoveDialog(
                                 .fillMaxWidth()
                                 .clip(MaterialTheme.shapes.medium)
                                 .clickable { targetId = item.serverId; release = false }
-                                .padding(vertical = 2.dp, start = (depth * 12).dp),
+                                .padding(start = (depth * 12).dp, top = 2.dp, bottom = 2.dp),
                         ) {
                             RadioButton(
                                 selected = targetId == item.serverId,
