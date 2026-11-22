@@ -96,14 +96,18 @@ import com.leanote.next.data.local.NoteEntity
 import com.leanote.next.data.model.SurfaceEffect
 import com.leanote.next.ui.theme.LocalSurfaceEffect
 import com.leanote.next.ui.theme.LocalSurfaceTranslucency
+import com.leanote.next.ui.theme.LocalUiSpacing
+import com.leanote.next.ui.theme.LocalUiStyle
 import com.leanote.next.ui.theme.barColor
 import com.leanote.next.ui.theme.pageBrush
 import com.leanote.next.data.local.NotebookEntity
 import com.leanote.next.data.model.SortMode
+import com.leanote.next.data.model.UiStyle
 import com.leanote.next.ui.components.AccountAvatar
 import com.leanote.next.ui.components.ConfirmDialog
 import com.leanote.next.ui.components.EmptyState
 import com.leanote.next.ui.components.LeanoteMark
+import com.leanote.next.ui.components.LeanoteTopAppBar
 import com.leanote.next.ui.components.LoadingBox
 import kotlinx.coroutines.launch
 
@@ -139,7 +143,7 @@ fun HomeScreen(
     var showBulkDelete by remember { mutableStateOf(false) }
     var notebookMoveTarget by remember { mutableStateOf<NotebookEntity?>(null) }
     var exportFormat by remember { mutableStateOf(com.leanote.next.data.transfer.ExportFormat.MARKDOWN) }
-    val density = com.leanote.next.ui.theme.LocalUiDensity.current
+    val spacing = LocalUiSpacing.current
 
     val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree(),
@@ -236,7 +240,7 @@ fun HomeScreen(
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
                 Column {
-                    TopAppBar(
+                    LeanoteTopAppBar(
                         title = {
                             if (state.selectionMode) {
                                 Column {
@@ -389,8 +393,11 @@ fun HomeScreen(
             Column(Modifier.padding(padding)) {
                 AnimatedVisibility(visible = state.tags.isNotEmpty() && !state.filter.trash) {
                     LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(
+                            horizontal = spacing.pageHorizontal,
+                            vertical = spacing.itemGap / 2,
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(spacing.inlineGap),
                     ) {
                         items(state.tags) { tag ->
                             FilterChip(
@@ -453,14 +460,13 @@ fun HomeScreen(
                             }
                         } else {
                             LazyColumn(
-                                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                                verticalArrangement = Arrangement.spacedBy(
-                                    when (density) {
-                                        com.leanote.next.data.model.UiDensity.COMPACT -> 6.dp
-                                        com.leanote.next.data.model.UiDensity.STANDARD -> 10.dp
-                                        com.leanote.next.data.model.UiDensity.COMFORTABLE -> 14.dp
-                                    },
+                                contentPadding = PaddingValues(
+                                    start = spacing.pageHorizontal,
+                                    end = spacing.pageHorizontal,
+                                    top = spacing.pageVertical,
+                                    bottom = 96.dp,
                                 ),
+                                verticalArrangement = Arrangement.spacedBy(spacing.itemGap),
                             ) {
                                 items(state.notes, key = { it.localId }) { note ->
                                     NoteCard(
@@ -491,11 +497,14 @@ fun HomeScreen(
 
     if (showNewSheet) {
         ModalBottomSheet(onDismissRequest = { showNewSheet = false }) {
-            Column(Modifier.padding(bottom = 28.dp)) {
+            Column(Modifier.padding(bottom = spacing.sectionGap)) {
                 Text(
                     "新建笔记",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(start = 24.dp, bottom = 8.dp),
+                    modifier = Modifier.padding(
+                        start = spacing.pageHorizontal + spacing.inlineGap,
+                        bottom = spacing.itemGap,
+                    ),
                 )
                 ListItem(
                     headlineContent = { Text("Markdown 笔记") },
@@ -551,11 +560,14 @@ fun HomeScreen(
 
     if (showAccountSheet) {
         ModalBottomSheet(onDismissRequest = { showAccountSheet = false }) {
-            Column(Modifier.padding(bottom = 28.dp)) {
+            Column(Modifier.padding(bottom = spacing.sectionGap)) {
                 Text(
                     "切换账户",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(start = 24.dp, bottom = 12.dp),
+                    modifier = Modifier.padding(
+                        start = spacing.pageHorizontal + spacing.inlineGap,
+                        bottom = spacing.itemGap,
+                    ),
                 )
                 state.accounts.forEach { account ->
                     ListItem(
@@ -792,12 +804,13 @@ fun HomeScreen(
 
 @Composable
 private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
+    val spacing = LocalUiSpacing.current
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(horizontal = spacing.pageHorizontal, vertical = spacing.itemGap / 2),
         placeholder = { Text("搜索标题、正文或标签") },
         leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
         trailingIcon = if (query.isNotEmpty()) {
@@ -808,7 +821,10 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
             }
         } else null,
         singleLine = true,
-        shape = CircleShape,
+        shape = when (LocalUiStyle.current) {
+            UiStyle.MATERIAL, UiStyle.MIUIX -> CircleShape
+            else -> MaterialTheme.shapes.large
+        },
         colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
@@ -843,6 +859,7 @@ private fun NotebookMoveDialog(
         flattenNotebooks(notebooks).filter { it.first.serverId !in blocked }
     }
     val isTopLevel = notebook.parentServerId.isBlank()
+    val spacing = LocalUiSpacing.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -890,8 +907,8 @@ private fun NotebookMoveDialog(
                     }
                 }
                 if (!targetId.isNullOrBlank()) {
-                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HorizontalDivider(Modifier.padding(vertical = spacing.itemGap))
+                    Row(horizontalArrangement = Arrangement.spacedBy(spacing.inlineGap)) {
                         FilterChip(
                             selected = !release,
                             onClick = { release = false },

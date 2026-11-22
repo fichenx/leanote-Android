@@ -485,11 +485,25 @@ class NoteTransfer @Inject constructor(
     private fun InputStream.readUtf8(): String = String(readBytes(), Charsets.UTF_8)
 
     private suspend fun restoreSettings(dto: SettingsBackupDto) {
+        val current = settingsStore.settings.first()
         settingsStore.setThemeMode(enumValueOr(dto.themeMode, ThemeMode.SYSTEM))
         settingsStore.setPalette(enumValueOr(dto.palette, ThemePalette.FOREST))
         settingsStore.setDynamicColor(dto.dynamicColor)
+        dto.surfaceEffect?.let { value ->
+            settingsStore.setSurfaceEffect(enumValueOr(value, current.surfaceEffect))
+        }
+        dto.surfaceTranslucency?.let { settingsStore.setSurfaceTranslucency(it.coerceIn(0, 60)) }
         settingsStore.clearCustomColors()
         dto.customColors.forEach { (role, hex) -> settingsStore.setCustomColor(role, hex) }
+        dto.density?.let { value ->
+            settingsStore.setDensity(enumValueOr(value, current.density))
+        }
+        dto.noteCardBorder?.let { settingsStore.setNoteCardBorder(it) }
+        dto.noteCardCorner?.let { settingsStore.setNoteCardCorner(it.coerceIn(0, 28)) }
+        dto.uiScale?.let { settingsStore.setUiScale(it.coerceIn(85, 130)) }
+        dto.uiStyle?.let { value ->
+            settingsStore.setUiStyle(enumValueOr(value, current.uiStyle))
+        }
         settingsStore.setAutoSync(dto.autoSync)
         settingsStore.setSortMode(enumValueOr(dto.sortMode, SortMode.UPDATED_DESC))
         settingsStore.setDefaultMarkdown(dto.defaultMarkdown)
@@ -525,7 +539,14 @@ class NoteTransfer @Inject constructor(
         themeMode = themeMode.name,
         palette = palette.name,
         dynamicColor = dynamicColor,
+        surfaceEffect = surfaceEffect.name,
+        surfaceTranslucency = surfaceTranslucency,
         customColors = customColors,
+        density = density.name,
+        noteCardBorder = noteCardBorder,
+        noteCardCorner = noteCardCorner,
+        uiScale = uiScale,
+        uiStyle = uiStyle.name,
         autoSync = autoSync,
         sortMode = sortMode.name,
         defaultMarkdown = defaultMarkdown,
@@ -614,7 +635,14 @@ private data class SettingsBackupDto(
     val themeMode: String = "SYSTEM",
     val palette: String = "FOREST",
     val dynamicColor: Boolean = false,
+    val surfaceEffect: String? = null,
+    val surfaceTranslucency: Int? = null,
     val customColors: Map<String, String> = emptyMap(),
+    val density: String? = null,
+    val noteCardBorder: Boolean? = null,
+    val noteCardCorner: Int? = null,
+    val uiScale: Int? = null,
+    val uiStyle: String? = null,
     val autoSync: Boolean = true,
     val sortMode: String = "UPDATED_DESC",
     val defaultMarkdown: Boolean = true,

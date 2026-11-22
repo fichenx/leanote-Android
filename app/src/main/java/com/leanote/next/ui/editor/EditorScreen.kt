@@ -3,6 +3,7 @@ package com.leanote.next.ui.editor
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -102,7 +103,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.leanote.next.data.repo.ImageRepository
 import com.leanote.next.ui.components.ConfirmDialog
+import com.leanote.next.ui.components.LeanoteTopAppBar
 import com.leanote.next.ui.components.LoadingBox
+import com.leanote.next.ui.theme.LocalUiSpacing
+import com.leanote.next.ui.theme.LocalUiStyleTokens
 import com.leanote.next.ui.theme.MonoFont
 import com.leanote.next.ui.web.MarkdownContent
 import dagger.hilt.android.EntryPointAccessors
@@ -123,6 +127,7 @@ fun EditorScreen(
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     val richController = remember { RichTextController() }
+    val spacing = LocalUiSpacing.current
 
     var showPreview by remember { mutableStateOf(false) }
     var previewHtml by remember { mutableStateOf("") }
@@ -305,7 +310,7 @@ fun EditorScreen(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            TopAppBar(
+            LeanoteTopAppBar(
                 navigationIcon = {
                     IconButton(onClick = handleBack) {
                         Icon(Icons.Rounded.ArrowBack, contentDescription = "返回")
@@ -370,7 +375,7 @@ fun EditorScreen(
                     onOpenInfo = { showInfo = true },
                 )
                 HorizontalDivider(
-                    modifier = Modifier.padding(top = 10.dp),
+                    modifier = Modifier.padding(top = spacing.itemGap),
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                 )
                 when {
@@ -378,7 +383,7 @@ fun EditorScreen(
                         Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 22.dp, vertical = 16.dp),
+                            .padding(horizontal = spacing.pageHorizontal, vertical = spacing.contentVertical),
                     ) {
                         MarkdownContent(markdown = previewHtml, modifier = Modifier.fillMaxWidth())
                     }
@@ -397,7 +402,7 @@ fun EditorScreen(
                         onHtmlChanged = viewModel::updateHtml,
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 18.dp),
+                            .padding(horizontal = spacing.pageHorizontal),
                     )
                 }
             }
@@ -481,12 +486,18 @@ fun EditorScreen(
 
 @Composable
 private fun TitleField(title: String, onTitleChange: (String) -> Unit) {
+    val spacing = LocalUiSpacing.current
     BasicTextField(
         value = title,
         onValueChange = onTitleChange,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 22.dp, end = 22.dp, top = 8.dp, bottom = 4.dp),
+            .padding(
+                start = spacing.pageHorizontal,
+                end = spacing.pageHorizontal,
+                top = spacing.pageVertical,
+                bottom = spacing.inlineGap / 2,
+            ),
         textStyle = MaterialTheme.typography.headlineMedium.copy(
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
@@ -509,12 +520,13 @@ private fun TitleField(title: String, onTitleChange: (String) -> Unit) {
 
 @Composable
 private fun MetaChips(state: EditorState, onOpenInfo: () -> Unit) {
+    val spacing = LocalUiSpacing.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = spacing.pageHorizontal, vertical = spacing.inlineGap),
+        horizontalArrangement = Arrangement.spacedBy(spacing.inlineGap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AssistChip(
@@ -554,7 +566,7 @@ private fun MetaChips(state: EditorState, onOpenInfo: () -> Unit) {
                 text = "已发布博客",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier.padding(horizontal = 4.dp),
+                modifier = Modifier.padding(horizontal = spacing.inlineGap / 2),
             )
         }
     }
@@ -566,7 +578,8 @@ private fun MarkdownEditor(
     onValueChange: (TextFieldValue) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+    val spacing = LocalUiSpacing.current
+    Box(modifier.padding(horizontal = spacing.pageHorizontal, vertical = spacing.pageVertical)) {
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
@@ -607,20 +620,28 @@ private fun EditorToolbar(
     onTable: () -> Unit,
     onTogglePreview: () -> Unit,
 ) {
+    val spacing = LocalUiSpacing.current
+    val styleTokens = LocalUiStyleTokens.current
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 2.dp,
+        shadowElevation = styleTokens.cardShadowElevation,
+        border = if (styleTokens.cardBorderWidth > 0.dp) {
+            BorderStroke(styleTokens.cardBorderWidth, MaterialTheme.colorScheme.outlineVariant)
+        } else {
+            null
+        },
     ) {
         if (previewMode) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                    .padding(horizontal = spacing.inlineGap, vertical = spacing.inlineGap / 2),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 ToolbarAction(Icons.Rounded.VisibilityOff, "退出预览", onTogglePreview)
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(spacing.inlineGap))
                 Text(
                     "Markdown 预览",
                     style = MaterialTheme.typography.labelMedium,
@@ -670,11 +691,12 @@ private fun EditorToolbar(
 
 @Composable
 private fun ToolbarRow(content: @Composable () -> Unit) {
+    val spacing = LocalUiSpacing.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 2.dp),
+            .padding(horizontal = spacing.inlineGap / 2),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         content()
@@ -683,9 +705,10 @@ private fun ToolbarRow(content: @Composable () -> Unit) {
 
 @Composable
 private fun ToolbarDivider() {
+    val spacing = LocalUiSpacing.current
     Box(
         Modifier
-            .padding(horizontal = 2.dp)
+            .padding(horizontal = spacing.inlineGap / 2)
             .size(width = 1.dp, height = 20.dp)
             .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
     )
@@ -695,7 +718,7 @@ private fun ToolbarDivider() {
 private fun HeadingMenu(onPick: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }, modifier = Modifier.size(42.dp)) {
+        IconButton(onClick = { open = true }, modifier = Modifier.size(48.dp)) {
             Icon(
                 imageVector = Icons.Rounded.Title,
                 contentDescription = "标题级别",
@@ -728,7 +751,7 @@ private fun ToolbarAction(
     description: String,
     onClick: () -> Unit,
 ) {
-    IconButton(onClick = onClick, modifier = Modifier.size(42.dp)) {
+    IconButton(onClick = onClick, modifier = Modifier.size(48.dp)) {
         Icon(
             imageVector = icon,
             contentDescription = description,
@@ -755,22 +778,30 @@ private fun EditorColorDialog(
     onPick: (String) -> Unit,
 ) {
     val colors = if (mode == "color") TextColors else HighlightColors
+    val spacing = LocalUiSpacing.current
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (mode == "color") "文字颜色" else "高亮颜色") },
         text = {
             FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(spacing.itemGap),
+                verticalArrangement = Arrangement.spacedBy(spacing.itemGap),
             ) {
                 colors.forEach { hex ->
                     Box(
                         Modifier
-                            .size(40.dp)
+                            .size(48.dp)
                             .clip(CircleShape)
-                            .background(androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(hex)))
                             .clickable { onPick(hex) },
-                    )
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(
+                            Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(hex))),
+                        )
+                    }
                 }
             }
         },
@@ -807,6 +838,7 @@ private fun TableSizeDialog(
 ) {
     var rows by remember { mutableStateOf(3) }
     var cols by remember { mutableStateOf(3) }
+    val spacing = LocalUiSpacing.current
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("插入表格") },
@@ -817,34 +849,34 @@ private fun TableSizeDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(spacing.itemGap))
                 Text(
                     "预览：${rows} 行 × ${cols} 列",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(spacing.itemGap))
                 Text("行数")
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { rows = rows.coerceAtLeast(1) - 1 }, enabled = rows > 1) {
                         Text("−", style = MaterialTheme.typography.titleMedium)
                     }
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(spacing.inlineGap))
                     Text(rows.toString(), style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(spacing.inlineGap))
                     IconButton(onClick = { rows = rows.coerceAtMost(10) + 1 }, enabled = rows < 10) {
                         Text("+", style = MaterialTheme.typography.titleMedium)
                     }
                 }
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(spacing.itemGap))
                 Text("列数")
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { cols = cols.coerceAtLeast(1) - 1 }, enabled = cols > 1) {
                         Text("−", style = MaterialTheme.typography.titleMedium)
                     }
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(spacing.inlineGap))
                     Text(cols.toString(), style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(spacing.inlineGap))
                     IconButton(onClick = { cols = cols.coerceAtMost(10) + 1 }, enabled = cols < 10) {
                         Text("+", style = MaterialTheme.typography.titleMedium)
                     }
@@ -870,37 +902,42 @@ private fun NoteInfoSheet(
     onBlogChange: (Boolean) -> Unit,
     onDelete: () -> Unit,
 ) {
+    val spacing = LocalUiSpacing.current
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
+                .padding(
+                    start = spacing.pageHorizontal,
+                    end = spacing.pageHorizontal,
+                    bottom = spacing.contentVertical * 2,
+                ),
         ) {
             Text("笔记信息", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(spacing.sectionGap))
             Text("笔记本", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(spacing.inlineGap / 2))
             state.notebooks.forEach { notebook ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onSelectNotebook(notebook.serverId) }
-                        .padding(vertical = 6.dp),
+                        .padding(vertical = spacing.cardVertical / 2),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RadioButton(
                         selected = state.notebookServerId == notebook.serverId,
                         onClick = { onSelectNotebook(notebook.serverId) },
                     )
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(spacing.inlineGap))
                     Text(
                         text = notebook.title.ifBlank { "未命名笔记本" },
                         style = MaterialTheme.typography.bodyLarge,
                     )
                 }
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(spacing.sectionGap))
             OutlinedTextField(
                 value = state.tags,
                 onValueChange = onTagsChange,
@@ -908,7 +945,7 @@ private fun NoteInfoSheet(
                 label = { Text("标签（用逗号分隔）") },
                 singleLine = true,
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(spacing.sectionGap))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -923,9 +960,9 @@ private fun NoteInfoSheet(
                 }
                 Switch(checked = state.isBlog, onCheckedChange = onBlogChange)
             }
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(spacing.sectionGap))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(spacing.itemGap))
             TextButton(onClick = onDelete) {
                 Icon(
                     Icons.Outlined.DeleteOutline,
@@ -933,7 +970,7 @@ private fun NoteInfoSheet(
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(18.dp),
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(spacing.inlineGap))
                 Text("移至回收站", color = MaterialTheme.colorScheme.error)
             }
         }

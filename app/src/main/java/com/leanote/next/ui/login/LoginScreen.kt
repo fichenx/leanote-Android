@@ -16,12 +16,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -76,8 +79,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.leanote.next.ui.components.AccountAvatar
 import com.leanote.next.ui.components.LeanoteMark
+import com.leanote.next.ui.theme.LocalUiSpacing
+import com.leanote.next.ui.theme.LocalUiStyleTokens
 import com.leanote.next.util.TimeUtils
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LoginScreen(
     onLoggedIn: () -> Unit,
@@ -86,15 +92,25 @@ fun LoginScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     var passwordVisible by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val spacing = LocalUiSpacing.current
 
     LaunchedEffect(Unit) {
         viewModel.loggedIn.collect { onLoggedIn() }
     }
 
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.4f
-    val heroColor = if (dark) Color(0xFF0A2E29) else Color(0xFF0B6B5D)
-    val heroAccent = if (dark) Color(0xFF98D5C9) else Color(0xFF8EE3D1)
-    val onHero = Color.White
+    val heroColor = if (dark) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+    val heroAccent = MaterialTheme.colorScheme.tertiary
+    val onHero = if (dark) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onPrimary
+    }
+    val styleTokens = LocalUiStyleTokens.current
 
     Box(
         modifier = Modifier
@@ -141,12 +157,12 @@ fun LoginScreen(
                 .imePadding()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 22.dp),
+                .padding(horizontal = spacing.pageHorizontal),
         ) {
-            Spacer(Modifier.height(52.dp))
+            Spacer(Modifier.height(spacing.pageVertical))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 LeanoteMark(modifier = Modifier.size(48.dp), tint = Color.White.copy(alpha = 0.16f))
-                Spacer(Modifier.width(14.dp))
+                Spacer(Modifier.width(spacing.inlineGap))
                 Column {
                     Text(
                         "Leanote",
@@ -163,14 +179,27 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(Modifier.height(38.dp))
+            Spacer(Modifier.height(spacing.sectionGap))
 
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = styleTokens.cardShadowElevation),
                 shape = MaterialTheme.shapes.extraLarge,
+                border = if (styleTokens.cardBorderWidth > 0.dp) {
+                    androidx.compose.foundation.BorderStroke(
+                        styleTokens.cardBorderWidth,
+                        MaterialTheme.colorScheme.outlineVariant,
+                    )
+                } else {
+                    null
+                },
             ) {
-                Column(Modifier.padding(22.dp)) {
+                Column(
+                    Modifier.padding(
+                        horizontal = spacing.cardHorizontal,
+                        vertical = spacing.cardVertical,
+                    ),
+                ) {
                     Text(
                         if (state.register) "创建账户" else "欢迎回来",
                         style = MaterialTheme.typography.headlineSmall,
@@ -181,7 +210,7 @@ fun LoginScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(Modifier.height(18.dp))
+                    Spacer(Modifier.height(spacing.contentVertical))
 
                     OutlinedTextField(
                         value = state.email,
@@ -195,7 +224,7 @@ fun LoginScreen(
                             imeAction = ImeAction.Next,
                         ),
                     )
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(spacing.itemGap))
                     OutlinedTextField(
                         value = state.password,
                         onValueChange = viewModel::setPassword,
@@ -228,7 +257,7 @@ fun LoginScreen(
                         exit = shrinkVertically() + fadeOut(),
                     ) {
                         Column {
-                            Spacer(Modifier.height(12.dp))
+                            Spacer(Modifier.height(spacing.itemGap))
                             OutlinedTextField(
                                 value = state.host,
                                 onValueChange = viewModel::setHost,
@@ -245,7 +274,7 @@ fun LoginScreen(
                     }
 
                     if (state.error != null) {
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(spacing.itemGap))
                         Text(
                             state.error!!,
                             color = MaterialTheme.colorScheme.error,
@@ -253,7 +282,7 @@ fun LoginScreen(
                         )
                     }
 
-                    Spacer(Modifier.height(18.dp))
+                    Spacer(Modifier.height(spacing.contentVertical))
                     Button(
                         onClick = {
                             focusManager.clearFocus()
@@ -262,7 +291,7 @@ fun LoginScreen(
                         enabled = !state.loading,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp),
+                            .heightIn(min = 50.dp),
                         shape = MaterialTheme.shapes.medium,
                     ) {
                         if (state.loading) {
@@ -271,27 +300,27 @@ fun LoginScreen(
                                 strokeWidth = 2.dp,
                                 color = MaterialTheme.colorScheme.onPrimary,
                             )
-                            Spacer(Modifier.width(10.dp))
+                            Spacer(Modifier.width(spacing.inlineGap))
                             Text("正在连接…")
                         } else {
                             Text(if (state.register) "注册并登录" else "登录")
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(spacing.inlineGap))
                             Icon(Icons.Rounded.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
                         }
                     }
 
-                    Spacer(Modifier.height(6.dp))
-                    Row(
+                    Spacer(Modifier.height(spacing.itemGap))
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalArrangement = Arrangement.spacedBy(spacing.itemGap),
                     ) {
                         TextButton(onClick = viewModel::toggleMode) {
                             Text(if (state.register) "已有账户？登录" else "注册新账户")
                         }
-                        Spacer(Modifier.weight(1f))
                         TextButton(onClick = viewModel::toggleServerField) {
                             Icon(Icons.Rounded.Dns, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(5.dp))
+                            Spacer(Modifier.width(spacing.inlineGap))
                             Text(if (state.showServerField) "隐藏服务器" else "服务器地址")
                         }
                     }
@@ -299,14 +328,14 @@ fun LoginScreen(
             }
 
             if (state.accounts.isNotEmpty()) {
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(spacing.sectionGap))
                 Text(
                     "已保存的账户",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 6.dp),
+                    modifier = Modifier.padding(horizontal = spacing.inlineGap),
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(spacing.itemGap))
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
                     shape = MaterialTheme.shapes.large,
@@ -317,11 +346,15 @@ fun LoginScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { viewModel.switchAccount(account.id) }
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    .heightIn(min = 48.dp)
+                                    .padding(
+                                        horizontal = spacing.cardHorizontal,
+                                        vertical = spacing.itemGap,
+                                    ),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 AccountAvatar(account)
-                                Spacer(Modifier.width(12.dp))
+                                Spacer(Modifier.width(spacing.inlineGap))
                                 Column(Modifier.weight(1f)) {
                                     Text(account.displayName, style = MaterialTheme.typography.titleSmall)
                                     Text(
@@ -340,7 +373,9 @@ fun LoginScreen(
                             }
                             if (index < state.accounts.lastIndex) {
                                 HorizontalDivider(
-                                    modifier = Modifier.padding(start = 68.dp),
+                                    modifier = Modifier.padding(
+                                        start = spacing.cardHorizontal + 40.dp + spacing.inlineGap,
+                                    ),
                                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                                 )
                             }
@@ -349,14 +384,14 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(spacing.sectionGap))
             Text(
                 "Leanote 开源笔记 · 支持 leanote.com 与自建服务器",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(spacing.pageVertical))
         }
     }
 }

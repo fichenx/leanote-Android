@@ -1,6 +1,8 @@
 package com.leanote.next.ui.home
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,11 +13,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -52,8 +54,12 @@ import androidx.compose.ui.unit.dp
 import com.leanote.next.BuildConfig
 import com.leanote.next.data.local.NotebookEntity
 import com.leanote.next.data.model.Account
+import com.leanote.next.data.model.UiStyle
 import com.leanote.next.ui.components.AccountAvatar
 import com.leanote.next.ui.components.SectionHeader
+import com.leanote.next.ui.theme.LocalUiSpacing
+import com.leanote.next.ui.theme.LocalUiStyle
+import com.leanote.next.ui.theme.LocalUiStyleTokens
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -74,11 +80,15 @@ fun HomeDrawerContent(
     onOpenBlog: () -> Unit,
     onSettings: () -> Unit,
 ) {
+    val spacing = LocalUiSpacing.current
+    val style = LocalUiStyle.current
+    val styleTokens = LocalUiStyleTokens.current
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 24.dp),
+            .padding(bottom = spacing.pageVertical),
     ) {
         Box(
             modifier = Modifier
@@ -95,13 +105,19 @@ fun HomeDrawerContent(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(min = 48.dp)
                     .clickable(enabled = account != null, onClick = onSwitchAccount)
-                    .padding(start = 20.dp, end = 8.dp, top = 26.dp, bottom = 18.dp),
+                    .padding(
+                        start = spacing.pageHorizontal,
+                        end = spacing.inlineGap,
+                        top = spacing.sectionGap,
+                        bottom = spacing.contentVertical,
+                    ),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (account != null) {
                     AccountAvatar(account, size = 54.dp)
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(spacing.itemGap))
                     Column(Modifier.weight(1f)) {
                         Text(
                             account.displayName,
@@ -125,29 +141,19 @@ fun HomeDrawerContent(
             }
         }
 
-        NavigationDrawerItem(
+        DrawerNavigationItem(
             label = { Text("全部笔记") },
             icon = { Icon(Icons.Rounded.Notes, contentDescription = null) },
             selected = !trashSelected && selectedNotebookId == null && selectedTag == null,
             onClick = onSelectAll,
-            modifier = Modifier.padding(horizontal = 12.dp),
-            shape = MaterialTheme.shapes.medium,
-            colors = NavigationDrawerItemDefaults.colors(
-                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-            ),
         )
-        NavigationDrawerItem(
+        DrawerNavigationItem(
             label = { Text("回收站") },
             icon = { Icon(Icons.Outlined.DeleteOutline, contentDescription = null) },
             selected = trashSelected,
             onClick = onShowTrash,
-            modifier = Modifier.padding(horizontal = 12.dp),
-            shape = MaterialTheme.shapes.medium,
-            colors = NavigationDrawerItemDefaults.colors(
-                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-            ),
         )
-        NavigationDrawerItem(
+        DrawerNavigationItem(
             label = {
                 Column {
                     Text("我的博客")
@@ -165,11 +171,9 @@ fun HomeDrawerContent(
             icon = { Icon(Icons.Outlined.Public, contentDescription = null) },
             selected = false,
             onClick = onOpenBlog,
-            modifier = Modifier.padding(horizontal = 12.dp),
-            shape = MaterialTheme.shapes.medium,
         )
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(spacing.sectionGap))
         SectionHeader("笔记本") {
             IconButton(onClick = onAddNotebook, modifier = Modifier.size(30.dp)) {
                 Icon(Icons.Rounded.Add, contentDescription = "新建笔记本", modifier = Modifier.size(18.dp))
@@ -186,7 +190,10 @@ fun HomeDrawerContent(
                 "还没有笔记本",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 22.dp, vertical = 6.dp),
+                modifier = Modifier.padding(
+                    horizontal = spacing.pageHorizontal + spacing.inlineGap,
+                    vertical = spacing.itemGap / 2,
+                ),
             )
         }
         tree.forEach { (notebook, depth) ->
@@ -211,23 +218,24 @@ fun HomeDrawerContent(
         }
 
         if (tags.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(spacing.sectionGap))
             SectionHeader("标签")
             FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = spacing.pageHorizontal),
+                horizontalArrangement = Arrangement.spacedBy(spacing.inlineGap),
+                verticalArrangement = Arrangement.spacedBy(spacing.inlineGap),
             ) {
                 tags.forEach { tag ->
                     val active = selectedTag == tag
                     AssistChip(
                         onClick = { onSelectTag(if (active) null else tag) },
                         label = { Text(tag, style = MaterialTheme.typography.labelMedium) },
-                        shape = CircleShape,
-                        border = AssistChipDefaults.assistChipBorder(
-                            enabled = true,
-                            borderColor = if (active) MaterialTheme.colorScheme.primary
+                        shape = MaterialTheme.shapes.extraLarge,
+                        border = BorderStroke(
+                            width = styleTokens.cardBorderWidth.takeIf { it > 0.dp } ?: 1.dp,
+                            color = if (active) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.outlineVariant,
                         ),
                         colors = AssistChipDefaults.assistChipColors(
@@ -241,17 +249,19 @@ fun HomeDrawerContent(
             }
         }
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(spacing.sectionGap))
         HorizontalDivider(
-            modifier = Modifier.padding(horizontal = 20.dp),
+            modifier = Modifier.padding(horizontal = spacing.pageHorizontal),
+            thickness = if (style == UiStyle.CUPERTINO) styleTokens.cardBorderWidth else 1.dp,
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
         )
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 48.dp)
                 .clickable(onClick = onSettings)
-                .padding(horizontal = 22.dp, vertical = 16.dp),
+                .padding(horizontal = spacing.pageHorizontal, vertical = spacing.contentVertical),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -260,7 +270,7 @@ fun HomeDrawerContent(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp),
             )
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(spacing.itemGap))
             Text("设置", style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.weight(1f))
             Text(
@@ -270,6 +280,68 @@ fun HomeDrawerContent(
             )
         }
     }
+}
+
+@Composable
+private fun DrawerNavigationItem(
+    label: @Composable () -> Unit,
+    icon: @Composable () -> Unit,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val spacing = LocalUiSpacing.current
+    val style = LocalUiStyle.current
+    val styleTokens = LocalUiStyleTokens.current
+    val shape = MaterialTheme.shapes.medium
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = spacing.pageHorizontal, vertical = spacing.itemGap / 4),
+    ) {
+        NavigationDrawerItem(
+            label = label,
+            icon = icon,
+            selected = selected,
+            onClick = onClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .then(
+                    if (style == UiStyle.FLUENT && styleTokens.cardBorderWidth > 0.dp) {
+                        Modifier.border(
+                            width = styleTokens.cardBorderWidth,
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                            shape = shape,
+                        )
+                    } else {
+                        Modifier
+                    },
+                ),
+            shape = shape,
+            colors = NavigationDrawerItemDefaults.colors(
+                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+            ),
+        )
+        if (selected && styleTokens.navigationLeadingIndicator) {
+            NavigationLeadingIndicator(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = spacing.inlineGap / 2),
+            )
+        }
+    }
+}
+
+@Composable
+private fun NavigationLeadingIndicator(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .width(3.dp)
+            .height(24.dp)
+            .clip(MaterialTheme.shapes.extraSmall)
+            .background(MaterialTheme.colorScheme.primary),
+    )
 }
 
 @Composable
@@ -283,57 +355,80 @@ private fun NotebookRow(
     onClick: () -> Unit,
     onMenu: () -> Unit,
 ) {
+    val spacing = LocalUiSpacing.current
+    val style = LocalUiStyle.current
+    val styleTokens = LocalUiStyleTokens.current
+    val shape = MaterialTheme.shapes.medium
+
     Surface(
         color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
         else MaterialTheme.colorScheme.surface,
-        shape = MaterialTheme.shapes.medium,
+        shape = shape,
+        border = if (style == UiStyle.FLUENT && styleTokens.cardBorderWidth > 0.dp) {
+            BorderStroke(styleTokens.cardBorderWidth, MaterialTheme.colorScheme.outlineVariant)
+        } else {
+            null
+        },
+        shadowElevation = 0.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 1.dp)
-            .clip(MaterialTheme.shapes.medium)
+            .padding(horizontal = spacing.pageHorizontal, vertical = spacing.itemGap / 4)
+            .clip(shape)
             .clickable(onClick = onClick),
     ) {
-        Row(
-            modifier = Modifier.padding(
-                start = 8.dp + (depth * 16).dp,
-                end = 4.dp,
-                top = 7.dp,
-                bottom = 7.dp,
-            ),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (hasChildren) {
-                IconButton(onClick = onToggleExpand, modifier = Modifier.size(24.dp)) {
+        Box(Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .padding(
+                        start = spacing.inlineGap + spacing.pageHorizontal * depth,
+                        end = spacing.inlineGap / 2,
+                        top = spacing.itemGap / 2,
+                        bottom = spacing.itemGap / 2,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (hasChildren) {
+                    IconButton(onClick = onToggleExpand, modifier = Modifier.size(24.dp)) {
+                        Icon(
+                            if (expanded) Icons.Rounded.KeyboardArrowDown else Icons.Rounded.KeyboardArrowRight,
+                            contentDescription = if (expanded) "收起子分类" else "展开子分类",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
+                    Spacer(Modifier.width(24.dp))
+                }
+                Icon(
+                    if (selected) Icons.Outlined.FolderOpen else Icons.Outlined.Folder,
+                    contentDescription = null,
+                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(spacing.itemGap))
+                Text(
+                    notebook.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = onMenu, modifier = Modifier.size(30.dp)) {
                     Icon(
-                        if (expanded) Icons.Rounded.KeyboardArrowDown else Icons.Rounded.KeyboardArrowRight,
-                        contentDescription = if (expanded) "收起子分类" else "展开子分类",
-                        modifier = Modifier.size(18.dp),
+                        Icons.Rounded.MoreHoriz,
+                        contentDescription = "笔记本操作",
+                        modifier = Modifier.size(17.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-            } else {
-                Spacer(Modifier.width(24.dp))
             }
-            Icon(
-                if (selected) Icons.Outlined.FolderOpen else Icons.Outlined.Folder,
-                contentDescription = null,
-                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                notebook.title,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            IconButton(onClick = onMenu, modifier = Modifier.size(30.dp)) {
-                Icon(
-                    Icons.Rounded.MoreHoriz,
-                    contentDescription = "笔记本操作",
-                    modifier = Modifier.size(17.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            if (selected && styleTokens.navigationLeadingIndicator) {
+                NavigationLeadingIndicator(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = spacing.inlineGap / 2),
                 )
             }
         }

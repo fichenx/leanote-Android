@@ -14,6 +14,7 @@ import com.leanote.next.data.model.SurfaceEffect
 import com.leanote.next.data.model.ThemeMode
 import com.leanote.next.data.model.ThemePalette
 import com.leanote.next.data.model.UiDensity
+import com.leanote.next.data.model.UiStyle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -37,20 +38,33 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
     private val surfaceTranslucencyKey = intPreferencesKey("surface_translucency")
     private val customColorsKey = stringPreferencesKey("custom_colors")
     private val densityKey = stringPreferencesKey("ui_density")
+    private val uiScaleKey = intPreferencesKey("ui_scale")
+    private val uiStyleKey = stringPreferencesKey("ui_style")
+    private val noteCardCornerKey = intPreferencesKey("note_card_corner")
     private val noteCardBorderKey = booleanPreferencesKey("note_card_border")
     private val autoSyncKey = booleanPreferencesKey("auto_sync")
     private val sortKey = stringPreferencesKey("sort_mode")
     private val markdownKey = booleanPreferencesKey("default_markdown")
 
     val settings: Flow<AppSettings> = dataStore.data.map { prefs ->
+        val palette = runCatching { ThemePalette.valueOf(prefs[paletteKey] ?: "") }
+            .getOrDefault(ThemePalette.FOREST)
+        val legacyCorner = when (palette) {
+            ThemePalette.MONOCHROME -> 0
+            ThemePalette.CREAM_PAPER, ThemePalette.NEON -> 12
+            else -> 22
+        }
         AppSettings(
             themeMode = runCatching { ThemeMode.valueOf(prefs[themeKey] ?: "") }.getOrDefault(ThemeMode.SYSTEM),
-            palette = runCatching { ThemePalette.valueOf(prefs[paletteKey] ?: "") }.getOrDefault(ThemePalette.FOREST),
+            palette = palette,
             dynamicColor = prefs[dynamicKey] ?: false,
             surfaceEffect = runCatching { SurfaceEffect.valueOf(prefs[surfaceEffectKey] ?: "") }.getOrDefault(SurfaceEffect.NONE),
             surfaceTranslucency = (prefs[surfaceTranslucencyKey] ?: 20).coerceIn(0, 60),
             customColors = decodeCustomColors(prefs[customColorsKey]),
             density = runCatching { UiDensity.valueOf(prefs[densityKey] ?: "") }.getOrDefault(UiDensity.STANDARD),
+            uiScale = (prefs[uiScaleKey] ?: 100).coerceIn(85, 130),
+            uiStyle = runCatching { UiStyle.valueOf(prefs[uiStyleKey] ?: "") }.getOrDefault(UiStyle.MATERIAL),
+            noteCardCorner = (prefs[noteCardCornerKey] ?: legacyCorner).coerceIn(0, 28),
             noteCardBorder = prefs[noteCardBorderKey] ?: true,
             autoSync = prefs[autoSyncKey] ?: true,
             sortMode = runCatching { SortMode.valueOf(prefs[sortKey] ?: "") }.getOrDefault(SortMode.UPDATED_DESC),
@@ -85,6 +99,16 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
     suspend fun clearCustomColors() = dataStore.edit { it.remove(customColorsKey) }
 
     suspend fun setDensity(density: UiDensity) = dataStore.edit { it[densityKey] = density.name }
+
+    suspend fun setUiScale(value: Int) = dataStore.edit {
+        it[uiScaleKey] = (85 + ((value - 85) / 5) * 5).coerceIn(85, 130)
+    }
+
+    suspend fun setUiStyle(style: UiStyle) = dataStore.edit { it[uiStyleKey] = style.name }
+
+    suspend fun setNoteCardCorner(value: Int) = dataStore.edit {
+        it[noteCardCornerKey] = (value / 2 * 2).coerceIn(0, 28)
+    }
 
     suspend fun setNoteCardBorder(enabled: Boolean) = dataStore.edit { it[noteCardBorderKey] = enabled }
 

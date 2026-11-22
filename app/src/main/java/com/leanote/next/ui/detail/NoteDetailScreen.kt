@@ -9,14 +9,14 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -52,7 +52,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -67,6 +66,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.leanote.next.data.local.NoteEntity
 import com.leanote.next.data.repo.ImageRepository
 import com.leanote.next.ui.components.ConfirmDialog
+import com.leanote.next.ui.components.LeanoteTopAppBar
 import com.leanote.next.ui.components.EmptyState
 import com.leanote.next.ui.components.LoadingBox
 import com.leanote.next.ui.components.TagRow
@@ -74,6 +74,7 @@ import com.leanote.next.ui.theme.MonoFont
 import com.leanote.next.data.model.SurfaceEffect
 import com.leanote.next.ui.theme.LocalSurfaceEffect
 import com.leanote.next.ui.theme.LocalSurfaceTranslucency
+import com.leanote.next.ui.theme.LocalUiSpacing
 import com.leanote.next.ui.theme.barColor
 import com.leanote.next.ui.theme.pageBrush
 import com.leanote.next.ui.web.HtmlContent
@@ -122,7 +123,7 @@ fun NoteDetailScreen(
         modifier = Modifier.background(effect.pageBrush(scheme)),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            TopAppBar(
+            LeanoteTopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Rounded.ArrowBack, contentDescription = "返回")
@@ -297,10 +298,11 @@ private fun MarkdownDetail(
     fitToWidth: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = LocalUiSpacing.current
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 22.dp),
+            .padding(horizontal = spacing.pageHorizontal),
     ) {
         NoteHeader(note, originalMode = !fitToWidth)
         if (fitToWidth) {
@@ -308,7 +310,7 @@ private fun MarkdownDetail(
                 markdown = rendered,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 56.dp),
+                    .padding(bottom = spacing.contentVertical),
             )
         } else {
             Box(
@@ -324,7 +326,7 @@ private fun MarkdownDetail(
                         lineHeight = 23.sp,
                     ),
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 56.dp),
+                    modifier = Modifier.padding(bottom = spacing.contentVertical),
                 )
             }
         }
@@ -340,8 +342,9 @@ private fun HtmlDetail(
     fitToWidth: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = LocalUiSpacing.current
     Column(modifier) {
-        Box(Modifier.padding(horizontal = 22.dp)) { NoteHeader(note, originalMode = !fitToWidth) }
+        Box(Modifier.padding(horizontal = spacing.pageHorizontal)) { NoteHeader(note, originalMode = !fitToWidth) }
         HtmlContent(
             html = rendered,
             account = account,
@@ -354,17 +357,23 @@ private fun HtmlDetail(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun NoteHeader(note: NoteEntity, originalMode: Boolean = false) {
-    Column(Modifier.padding(top = 4.dp, bottom = 12.dp)) {
+    val spacing = LocalUiSpacing.current
+    Column(Modifier.padding(top = spacing.inlineGap / 2, bottom = spacing.itemGap)) {
         Text(
             text = if (note.title.isBlank()) "无标题笔记" else note.title,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.SemiBold,
             lineHeight = MaterialTheme.typography.headlineMedium.lineHeight,
         )
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Spacer(Modifier.height(spacing.itemGap))
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(spacing.inlineGap),
+            verticalArrangement = Arrangement.spacedBy(spacing.inlineGap),
+        ) {
             Text(
                 text = buildString {
                     append(TimeUtils.formatFull(note.updatedTime))
@@ -374,7 +383,6 @@ private fun NoteHeader(note: NoteEntity, originalMode: Boolean = false) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (note.isBlog) {
-                Spacer(Modifier.width(8.dp))
                 Icon(
                     Icons.Outlined.Public,
                     contentDescription = null,
@@ -382,7 +390,6 @@ private fun NoteHeader(note: NoteEntity, originalMode: Boolean = false) {
                     modifier = Modifier.size(13.dp),
                 )
             }
-            Spacer(Modifier.width(8.dp))
             Surface(
                 color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
                 shape = MaterialTheme.shapes.extraSmall,
@@ -391,11 +398,10 @@ private fun NoteHeader(note: NoteEntity, originalMode: Boolean = false) {
                     if (note.isMarkdown) "Markdown" else "富文本",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                    modifier = Modifier.padding(horizontal = spacing.inlineGap, vertical = 1.dp),
                 )
             }
             if (originalMode) {
-                Spacer(Modifier.width(8.dp))
                 Icon(
                     Icons.Outlined.Public,
                     contentDescription = null,
@@ -405,7 +411,7 @@ private fun NoteHeader(note: NoteEntity, originalMode: Boolean = false) {
             }
         }
         if (originalMode) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(spacing.itemGap))
             Surface(
                 color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
                 shape = MaterialTheme.shapes.extraSmall,
@@ -414,17 +420,17 @@ private fun NoteHeader(note: NoteEntity, originalMode: Boolean = false) {
                     "原文模式 · 可左右滑动",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    modifier = Modifier.padding(horizontal = spacing.inlineGap, vertical = spacing.inlineGap / 2),
                 )
             }
         }
         if (note.tagList.isNotEmpty()) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(spacing.itemGap))
             TagRow(note.tagList, max = 6)
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(spacing.sectionGap))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(spacing.sectionGap))
     }
 }
 

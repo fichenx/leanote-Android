@@ -60,8 +60,11 @@ enum class SortMode { UPDATED_DESC, UPDATED_ASC, CREATED_DESC, TITLE_ASC }
 /** 界面材质效果。 */
 enum class SurfaceEffect { NONE, FROSTED, ACRYLIC }
 
-/** 列表与卡片的紧凑程度。 */
+/** 应用内页面的紧凑程度。 */
 enum class UiDensity { COMPACT, STANDARD, COMFORTABLE }
+
+/** 应用内界面的视觉与交互风格。 */
+enum class UiStyle { MATERIAL, MIUIX, CUPERTINO, FLUENT }
 
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
@@ -72,6 +75,11 @@ data class AppSettings(
     val surfaceTranslucency: Int = 20,
     val customColors: Map<String, String> = emptyMap(),
     val density: UiDensity = UiDensity.STANDARD,
+    /** 应用内界面和文字缩放百分比。 */
+    val uiScale: Int = 100,
+    val uiStyle: UiStyle = UiStyle.MATERIAL,
+    /** 笔记卡片独立圆角，单位 dp。 */
+    val noteCardCorner: Int = 22,
     /** 笔记卡片是否显示边框，颜色跟随自定义配色中的「边框」。 */
     val noteCardBorder: Boolean = true,
     val autoSync: Boolean = true,

@@ -8,6 +8,7 @@ import com.leanote.next.data.model.SortMode
 import com.leanote.next.data.model.SurfaceEffect
 import com.leanote.next.data.model.ThemeMode
 import com.leanote.next.data.model.ThemePalette
+import com.leanote.next.data.model.UiStyle
 import com.leanote.next.data.prefs.AccountStore
 import com.leanote.next.data.prefs.SettingsStore
 import com.leanote.next.data.repo.AuthRepository
@@ -134,6 +135,18 @@ class SettingsViewModel @Inject constructor(
 
     fun setDensity(density: com.leanote.next.data.model.UiDensity) = viewModelScope.launch {
         settingsStore.setDensity(density)
+    }
+
+    fun setUiScale(value: Int) = viewModelScope.launch {
+        settingsStore.setUiScale(value)
+    }
+
+    fun setUiStyle(style: UiStyle) = viewModelScope.launch {
+        settingsStore.setUiStyle(style)
+    }
+
+    fun setNoteCardCorner(value: Int) = viewModelScope.launch {
+        settingsStore.setNoteCardCorner(value)
     }
 
     fun setNoteCardBorder(enabled: Boolean) = viewModelScope.launch {

@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
 import com.leanote.next.data.model.Account
 import com.leanote.next.data.repo.ImageRepository
+import com.leanote.next.ui.theme.LocalUiScale
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
@@ -68,6 +69,7 @@ fun RichTextEditorView(
     onHtmlChanged: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val uiScale = LocalUiScale.current
     val bg = MaterialTheme.colorScheme.background.toArgb()
     val fg = MaterialTheme.colorScheme.onSurface.toArgb()
     val link = MaterialTheme.colorScheme.primary.toArgb()
@@ -89,6 +91,7 @@ fun RichTextEditorView(
                 settings.loadsImagesAutomatically = true
                 settings.allowFileAccess = false
                 settings.allowContentAccess = false
+                settings.textZoom = uiScale
                 isVerticalScrollBarEnabled = false
                 addJavascriptInterface(
                     EditorBridge { controller.getHtml { html -> onHtmlChanged(html) } },
@@ -121,6 +124,7 @@ fun RichTextEditorView(
             }
         },
         update = { webView ->
+            webView.settings.textZoom = uiScale
             controller.webView = webView
         },
     )

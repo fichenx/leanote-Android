@@ -3,6 +3,7 @@ package com.leanote.next.ui.settings
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,16 +12,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
@@ -43,7 +47,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -57,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -68,12 +72,18 @@ import com.leanote.next.data.model.SurfaceEffect
 import com.leanote.next.data.model.ThemeMode
 import com.leanote.next.data.model.ThemePalette
 import com.leanote.next.data.model.UiDensity
+import com.leanote.next.data.model.UiStyle
 import com.leanote.next.ui.components.AccountAvatar
 import com.leanote.next.ui.components.ConfirmDialog
+import com.leanote.next.ui.components.LeanoteTopAppBar
 import com.leanote.next.ui.theme.LocalSurfaceEffect
 import com.leanote.next.ui.theme.LocalSurfaceTranslucency
+import com.leanote.next.ui.theme.LocalUiSpacing
+import com.leanote.next.ui.theme.LocalUiStyle
+import com.leanote.next.ui.theme.LocalUiStyleTokens
 import com.leanote.next.ui.theme.cardColor
 import com.leanote.next.ui.theme.pageBrush
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,6 +94,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val spacing = LocalUiSpacing.current
     val account by viewModel.account.collectAsStateWithLifecycle()
     val syncing by viewModel.syncing.collectAsStateWithLifecycle()
     val uploadingAvatar by viewModel.uploadingAvatar.collectAsStateWithLifecycle()
@@ -109,7 +120,7 @@ fun SettingsScreen(
         modifier = Modifier.background(LocalSurfaceEffect.current.pageBrush(MaterialTheme.colorScheme)),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            TopAppBar(
+            LeanoteTopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Rounded.ArrowBack, contentDescription = "返回")
@@ -130,8 +141,11 @@ fun SettingsScreen(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(
+                horizontal = spacing.pageHorizontal,
+                vertical = spacing.pageVertical,
+            ),
+            verticalArrangement = Arrangement.spacedBy(spacing.itemGap),
         ) {
             account?.let { current ->
                 item {
@@ -149,42 +163,41 @@ fun SettingsScreen(
             item {
                 SettingsCard {
                     SettingLabel("主题模式", "深色模式可减少夜间阅读的眩光")
-                    Spacer(Modifier.height(10.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ThemeMode.entries.forEach { mode ->
-                            AssistChip(
-                                onClick = { viewModel.setThemeMode(mode) },
-                                label = {
-                                    Text(
-                                        when (mode) {
-                                            ThemeMode.SYSTEM -> "跟随系统"
-                                            ThemeMode.LIGHT -> "浅色"
-                                            ThemeMode.DARK -> "深色"
-                                        },
-                                    )
-                                },
-                                shape = CircleShape,
-                                border = null,
-                                colors = AssistChipDefaults.assistChipColors(
-                                    containerColor = if (settings.themeMode == mode) {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainerHigh
-                                    },
-                                ),
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(spacing.itemGap))
+                    SettingChoiceChips(
+                        options = ThemeMode.entries.map { mode ->
+                            mode to when (mode) {
+                                ThemeMode.SYSTEM -> "跟随系统"
+                                ThemeMode.LIGHT -> "浅色"
+                                ThemeMode.DARK -> "深色"
+                            }
+                        },
+                        selected = settings.themeMode,
+                        onSelect = viewModel::setThemeMode,
+                    )
+                    Spacer(Modifier.height(spacing.contentVertical))
+                    SettingLabel("界面风格", "选择应用整体的控件、圆角与导航视觉风格")
+                    Spacer(Modifier.height(spacing.itemGap))
+                    SettingChoiceChips(
+                        options = listOf(
+                            UiStyle.MATERIAL to "Material",
+                            UiStyle.MIUIX to "Miuix",
+                            UiStyle.CUPERTINO to "Cupertino",
+                            UiStyle.FLUENT to "Fluent",
+                        ),
+                        selected = settings.uiStyle,
+                        onSelect = viewModel::setUiStyle,
+                    )
+                    Spacer(Modifier.height(spacing.contentVertical))
                     SettingLabel("配色方案", "深色模式使用柔和的深灰背景，不再是纯黑")
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(spacing.itemGap))
                     ThemePaletteChips(
                         selected = settings.palette,
                         enabled = !settings.dynamicColor,
                         onSelect = viewModel::setPalette,
                     )
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(spacing.itemGap))
                         ToggleRow(
                             title = "动态取色",
                             subtitle = "从系统壁纸中提取主题色",
@@ -192,33 +205,26 @@ fun SettingsScreen(
                             onCheckedChange = viewModel::setDynamicColor,
                         )
                     }
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(spacing.contentVertical))
                     SettingLabel("界面材质", "磨砂与亚克力会让顶栏、卡片呈现半透明质感")
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(
+                    Spacer(Modifier.height(spacing.itemGap))
+                    SettingChoiceChips(
+                        options = listOf(
                             SurfaceEffect.NONE to "无",
                             SurfaceEffect.FROSTED to "磨砂",
                             SurfaceEffect.ACRYLIC to "亚克力",
-                        ).forEach { (effect, label) ->
-                            AssistChip(
-                                onClick = { viewModel.setSurfaceEffect(effect) },
-                                label = { Text(label) },
-                                shape = CircleShape,
-                                border = null,
-                                colors = AssistChipDefaults.assistChipColors(
-                                    containerColor = if (settings.surfaceEffect == effect) {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainerHigh
-                                    },
-                                ),
-                            )
-                        }
-                    }
+                        ),
+                        selected = settings.surfaceEffect,
+                        onSelect = viewModel::setSurfaceEffect,
+                    )
                     if (settings.surfaceEffect != SurfaceEffect.NONE) {
-                        Spacer(Modifier.height(14.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Spacer(Modifier.height(spacing.contentVertical))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             Text("透明强度", style = MaterialTheme.typography.bodyLarge)
                             Spacer(Modifier.weight(1f))
                             Text(
@@ -229,7 +235,7 @@ fun SettingsScreen(
                         }
                         Slider(
                             value = settings.surfaceTranslucency.toFloat(),
-                            onValueChange = { viewModel.setSurfaceTranslucency(it.toInt()) },
+                            onValueChange = { viewModel.setSurfaceTranslucency(it.roundToInt()) },
                             valueRange = 0f..60f,
                             steps = 11,
                         )
@@ -239,31 +245,65 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    Spacer(Modifier.height(14.dp))
-                    SettingLabel("列表紧凑度", "调整笔记卡片的间距与预览行数")
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(
+                    Spacer(Modifier.height(spacing.contentVertical))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            SettingLabel("全局缩放", "同步调整应用内界面和字体大小")
+                        }
+                        Spacer(Modifier.width(spacing.itemGap))
+                        Text(
+                            "${settings.uiScale}%",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    Slider(
+                        value = settings.uiScale.toFloat(),
+                        onValueChange = { viewModel.setUiScale(it.roundToInt()) },
+                        valueRange = 85f..130f,
+                        steps = 8,
+                    )
+                    Spacer(Modifier.height(spacing.contentVertical))
+                    SettingLabel("界面紧凑度", "同步调整笔记列表、侧边栏、设置及其他页面的间距")
+                    Spacer(Modifier.height(spacing.itemGap))
+                    SettingChoiceChips(
+                        options = listOf(
                             UiDensity.COMPACT to "紧凑",
                             UiDensity.STANDARD to "标准",
                             UiDensity.COMFORTABLE to "宽松",
-                        ).forEach { (mode, label) ->
-                            AssistChip(
-                                onClick = { viewModel.setDensity(mode) },
-                                label = { Text(label) },
-                                shape = CircleShape,
-                                border = null,
-                                colors = AssistChipDefaults.assistChipColors(
-                                    containerColor = if (settings.density == mode) {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainerHigh
-                                    },
-                                ),
-                            )
+                        ),
+                        selected = settings.density,
+                        onSelect = viewModel::setDensity,
+                    )
+                    Spacer(Modifier.height(spacing.contentVertical))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            SettingLabel("笔记卡片圆角", "独立调整笔记列表中的卡片圆角，不影响其他页面卡片")
                         }
+                        Spacer(Modifier.width(spacing.itemGap))
+                        Text(
+                            "${settings.noteCardCorner} dp",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
                     }
-                    Spacer(Modifier.height(10.dp))
+                    Slider(
+                        value = settings.noteCardCorner.toFloat(),
+                        onValueChange = { viewModel.setNoteCardCorner(it.roundToInt()) },
+                        valueRange = 0f..28f,
+                        steps = 13,
+                    )
+                    Spacer(Modifier.height(spacing.itemGap))
                     ToggleRow(
                         title = "显示卡片边框",
                         subtitle = "颜色跟随自定义配色中的「边框」",
@@ -291,32 +331,20 @@ fun SettingsScreen(
                         onCheckedChange = viewModel::setDefaultMarkdown,
                     )
                     HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 10.dp),
+                        modifier = Modifier.padding(vertical = spacing.itemGap),
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                     )
                     SettingLabel("默认排序", "笔记列表的排列方式")
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(
+                    Spacer(Modifier.height(spacing.itemGap))
+                    SettingChoiceChips(
+                        options = listOf(
                             SortMode.UPDATED_DESC to "最近更新",
                             SortMode.CREATED_DESC to "最近创建",
                             SortMode.TITLE_ASC to "标题",
-                        ).forEach { (mode, label) ->
-                            AssistChip(
-                                onClick = { viewModel.setSortMode(mode) },
-                                label = { Text(label) },
-                                shape = CircleShape,
-                                border = null,
-                                colors = AssistChipDefaults.assistChipColors(
-                                    containerColor = if (settings.sortMode == mode) {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainerHigh
-                                    },
-                                ),
-                            )
-                        }
-                    }
+                        ),
+                        selected = settings.sortMode,
+                        onSelect = viewModel::setSortMode,
+                    )
                 }
             }
 
@@ -324,10 +352,12 @@ fun SettingsScreen(
             item {
                 SettingsCard {
                     SettingLabel("备份与导入导出", "本地备份/恢复全部笔记与设置，支持 Markdown、HTML、ENEX 格式")
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(spacing.contentVertical))
                     OutlinedButton(
                         onClick = onOpenDataTransfer,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp),
                     ) {
                         Text("打开数据管理")
                     }
@@ -350,19 +380,21 @@ fun SettingsScreen(
             item {
                 SettingsCard {
                     SettingLabel("Leanote Next", "Material 3 风格的蚂蚁笔记客户端")
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(spacing.inlineGap))
                     Text(
                         text = "版本 ${BuildConfig.VERSION_NAME}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(spacing.contentVertical))
                     OutlinedButton(
                         onClick = { confirmLogout = true },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp),
                     ) {
                         Icon(Icons.Rounded.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(spacing.inlineGap))
                         Text("退出当前账户", color = MaterialTheme.colorScheme.error)
                     }
                 }
@@ -385,12 +417,49 @@ fun SettingsScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun <T> SettingChoiceChips(
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+) {
+    val spacing = LocalUiSpacing.current
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(spacing.inlineGap),
+        verticalArrangement = Arrangement.spacedBy(spacing.inlineGap),
+    ) {
+        options.forEach { (value, label) ->
+            AssistChip(
+                onClick = { onSelect(value) },
+                label = { Text(label) },
+                shape = when (LocalUiStyle.current) {
+                    UiStyle.MATERIAL, UiStyle.MIUIX -> CircleShape
+                    UiStyle.CUPERTINO -> MaterialTheme.shapes.small
+                    UiStyle.FLUENT -> MaterialTheme.shapes.extraSmall
+                },
+                border = null,
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = if (selected == value) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+                ),
+                modifier = Modifier.heightIn(min = 48.dp),
+            )
+        }
+    }
+}
+
 @Composable
 private fun ThemePaletteChips(
     selected: ThemePalette,
     enabled: Boolean,
     onSelect: (ThemePalette) -> Unit,
 ) {
+    val spacing = LocalUiSpacing.current
     val items = listOf(
         ThemePalette.FOREST to ("森野" to Color(0xFF0F766E)),
         ThemePalette.OCEAN to ("海洋" to Color(0xFF1D4ED8)),
@@ -401,40 +470,57 @@ private fun ThemePaletteChips(
         ThemePalette.MONOCHROME to ("黑白" to Color(0xFF111827)),
         ThemePalette.NEON to ("莓果" to Color(0xFFBE185D)),
     )
-    // 固定 4 列 × 2 行
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // 固定 4 列 × 2 行；每行以最高项为准，让四张配色卡等高。
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.inlineGap)) {
         items.chunked(4).forEach { rowItems ->
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(spacing.inlineGap),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
             ) {
                 rowItems.forEach { (palette, pair) ->
                     val (label, color) = pair
-                    AssistChip(
-                        onClick = { if (enabled) onSelect(palette) },
-                        enabled = enabled,
-                        label = {
-                            Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        },
-                        leadingIcon = {
+                    val containerColor = if (selected == palette) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    }
+                    Surface(
+                        color = containerColor.copy(alpha = if (enabled) 1f else 0.38f),
+                        contentColor = MaterialTheme.colorScheme.onSurface.copy(
+                            alpha = if (enabled) 1f else 0.38f,
+                        ),
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .heightIn(min = 48.dp)
+                            .clip(CircleShape)
+                            .clickable(enabled = enabled) { onSelect(palette) },
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
                             Box(
                                 Modifier
                                     .size(10.dp)
                                     .clip(CircleShape)
-                                    .background(color),
+                                    .background(color.copy(alpha = if (enabled) 1f else 0.38f)),
                             )
-                        },
-                        shape = CircleShape,
-                        border = null,
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = if (selected == palette) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.surfaceContainerHigh
-                            },
-                        ),
-                        modifier = Modifier.weight(1f),
-                    )
+                            Spacer(Modifier.height(spacing.inlineGap / 2))
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                textAlign = TextAlign.Center,
+                                maxLines = 3,
+                                overflow = TextOverflow.Clip,
+                                softWrap = true,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -449,13 +535,17 @@ private fun AccountCard(
     onSync: () -> Unit,
     onPickAvatar: () -> Unit,
 ) {
+    val spacing = LocalUiSpacing.current
     Surface(
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
         shape = MaterialTheme.shapes.large,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.padding(
+                horizontal = spacing.cardHorizontal,
+                vertical = spacing.cardVertical,
+            ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
@@ -492,7 +582,7 @@ private fun AccountCard(
                     }
                 }
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(spacing.itemGap))
             Column(Modifier.weight(1f)) {
                 Text(
                     account.displayName,
@@ -508,18 +598,22 @@ private fun AccountCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(spacing.inlineGap))
             OutlinedButton(
                 onClick = onSync,
                 enabled = !syncing,
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                modifier = Modifier.heightIn(min = 48.dp),
+                contentPadding = PaddingValues(
+                    horizontal = spacing.itemGap,
+                    vertical = spacing.inlineGap,
+                ),
             ) {
                 if (syncing) {
                     CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
                 } else {
                     Icon(Icons.Rounded.Sync, contentDescription = null, modifier = Modifier.size(16.dp))
                 }
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(spacing.inlineGap))
                 Text(if (syncing) "同步中" else "立即同步", style = MaterialTheme.typography.labelMedium)
             }
         }
@@ -529,6 +623,8 @@ private fun AccountCard(
 @Composable
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     val effect = LocalSurfaceEffect.current
+    val spacing = LocalUiSpacing.current
+    val styleTokens = LocalUiStyleTokens.current
     Surface(
         color = effect.cardColor(
             MaterialTheme.colorScheme,
@@ -536,27 +632,44 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
             LocalSurfaceTranslucency.current,
         ),
         shape = MaterialTheme.shapes.large,
+        border = if (styleTokens.cardBorderWidth > 0.dp) {
+            BorderStroke(styleTokens.cardBorderWidth, MaterialTheme.colorScheme.outlineVariant)
+        } else {
+            null
+        },
+        shadowElevation = styleTokens.cardShadowElevation,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp), content = content)
+        Column(
+            Modifier.padding(
+                horizontal = spacing.cardHorizontal,
+                vertical = spacing.contentVertical,
+            ),
+            content = content,
+        )
     }
 }
 
 @Composable
 private fun SectionTitle(text: String) {
+    val spacing = LocalUiSpacing.current
     Text(
         text = text,
         style = MaterialTheme.typography.labelLarge,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 6.dp, top = 8.dp),
+        modifier = Modifier.padding(
+            start = spacing.inlineGap,
+            top = spacing.sectionGap - spacing.itemGap,
+        ),
     )
 }
 
 @Composable
 private fun SettingLabel(title: String, subtitle: String) {
+    val spacing = LocalUiSpacing.current
     Text(title, style = MaterialTheme.typography.bodyLarge)
-    Spacer(Modifier.height(2.dp))
+    Spacer(Modifier.height(spacing.inlineGap / 4))
     Text(
         subtitle,
         style = MaterialTheme.typography.labelSmall,
@@ -571,16 +684,18 @@ private fun ToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
+    val spacing = LocalUiSpacing.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .clickable { onCheckedChange(!checked) },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             SettingLabel(title, subtitle)
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(spacing.itemGap))
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }

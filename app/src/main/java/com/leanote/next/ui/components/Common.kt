@@ -4,12 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,12 +20,17 @@ import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarColors
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -43,6 +49,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.leanote.next.data.local.NoteEntity
 import com.leanote.next.data.model.Account
+import com.leanote.next.ui.theme.LocalUiSpacing
+import com.leanote.next.ui.theme.LocalUiStyleTokens
 import com.leanote.next.util.HtmlUtils
 import com.leanote.next.util.TimeUtils
 
@@ -61,6 +69,35 @@ fun LeanoteMark(modifier: Modifier = Modifier, tint: Color = MaterialTheme.color
                 modifier = Modifier.size(24.dp),
             )
         }
+    }
+}
+
+/** Cupertino 使用居中标题，其余风格保留起始对齐。 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LeanoteTopAppBar(
+    title: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    navigationIcon: @Composable () -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {},
+    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
+) {
+    if (LocalUiStyleTokens.current.centerTopBarTitle) {
+        CenterAlignedTopAppBar(
+            title = title,
+            modifier = modifier,
+            navigationIcon = navigationIcon,
+            actions = actions,
+            colors = colors,
+        )
+    } else {
+        TopAppBar(
+            title = title,
+            modifier = modifier,
+            navigationIcon = navigationIcon,
+            actions = actions,
+            colors = colors,
+        )
     }
 }
 
@@ -114,10 +151,11 @@ fun EmptyState(
     modifier: Modifier = Modifier,
     action: (@Composable () -> Unit)? = null,
 ) {
+    val spacing = LocalUiSpacing.current
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 32.dp),
+            .padding(horizontal = spacing.pageHorizontal * 2),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -130,9 +168,9 @@ fun EmptyState(
         ) {
             Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(38.dp))
         }
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(spacing.sectionGap))
         Text(title, style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(spacing.itemGap))
         Text(
             description,
             style = MaterialTheme.typography.bodyMedium,
@@ -140,7 +178,7 @@ fun EmptyState(
             textAlign = TextAlign.Center,
         )
         if (action != null) {
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(spacing.sectionGap))
             action()
         }
     }
@@ -184,7 +222,7 @@ fun ConfirmDialog(
 @Composable
 fun TagRow(tags: List<String>, modifier: Modifier = Modifier, max: Int = 3) {
     if (tags.isEmpty()) return
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(LocalUiSpacing.current.inlineGap)) {
         tags.take(max).forEach { tag ->
             AssistChip(
                 onClick = {},
@@ -202,7 +240,7 @@ fun TagRow(tags: List<String>, modifier: Modifier = Modifier, max: Int = 3) {
                     labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 ),
                 border = null,
-                modifier = Modifier.height(26.dp),
+                modifier = Modifier.heightIn(min = 32.dp),
             )
         }
     }
@@ -230,10 +268,12 @@ fun notePreview(note: NoteEntity): String =
 
 @Composable
 fun SectionHeader(text: String, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null) {
+    val spacing = LocalUiSpacing.current
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+            .heightIn(min = 48.dp)
+            .padding(horizontal = spacing.pageHorizontal, vertical = spacing.itemGap / 2),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -245,11 +285,3 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier, trailing: (@Compo
         trailing?.invoke()
     }
 }
-
-val ListPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-
-@Composable
-fun HSpacer(width: Int) = Spacer(Modifier.width(width.dp))
-
-@Composable
-fun VSpacer(height: Int) = Spacer(Modifier.height(height.dp))

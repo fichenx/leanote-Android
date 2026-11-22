@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -65,6 +66,7 @@ import com.leanote.next.data.local.NoteEntity
 import com.leanote.next.data.model.Account
 import com.leanote.next.data.repo.AttachmentRepository
 import com.leanote.next.ui.components.ConfirmDialog
+import com.leanote.next.ui.theme.LocalUiSpacing
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -175,6 +177,7 @@ fun AttachmentsSheet(
     val snackbar = remember { SnackbarHostState() }
     var menuFor by remember { mutableStateOf<NoteAttachmentEntity?>(null) }
     var pendingDelete by remember { mutableStateOf<NoteAttachmentEntity?>(null) }
+    val spacing = LocalUiSpacing.current
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) viewModel.upload(context, uri)
@@ -192,12 +195,12 @@ fun AttachmentsSheet(
         Column(
             Modifier
                 .fillMaxWidth()
-                .padding(bottom = 20.dp),
+                .padding(bottom = spacing.pageVertical),
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = spacing.pageHorizontal),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
@@ -217,7 +220,7 @@ fun AttachmentsSheet(
                     } else {
                         Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(20.dp))
                     }
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(spacing.inlineGap))
                     Text(if (state.uploading) "正在上传…" else "添加附件")
                 }
             }
@@ -225,17 +228,17 @@ fun AttachmentsSheet(
                 LinearProgressIndicator(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 12.dp),
+                        .padding(top = spacing.itemGap),
                 )
             } else {
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(spacing.itemGap))
             }
 
             when {
                 state.loading -> Box(
                     Modifier
                         .fillMaxWidth()
-                        .height(180.dp),
+                        .heightIn(min = 180.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator()
@@ -243,7 +246,7 @@ fun AttachmentsSheet(
                 state.items.isEmpty() -> Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 32.dp, vertical = 40.dp),
+                        .padding(horizontal = spacing.pageHorizontal * 2, vertical = spacing.contentVertical * 2),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
@@ -253,9 +256,9 @@ fun AttachmentsSheet(
                         modifier = Modifier.size(40.dp),
                         tint = MaterialTheme.colorScheme.primary,
                     )
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(spacing.itemGap))
                     Text("暂无附件", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(spacing.inlineGap))
                     Text(
                         "点击“添加附件”选择要上传的文件",
                         style = MaterialTheme.typography.bodySmall,
@@ -266,6 +269,8 @@ fun AttachmentsSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 480.dp),
+                    contentPadding = PaddingValues(vertical = spacing.itemGap),
+                    verticalArrangement = Arrangement.spacedBy(spacing.itemGap),
                 ) {
                     items(state.items, key = { it.localId }) { attachment ->
                         val working = state.workingId == attachment.localId
@@ -335,7 +340,7 @@ fun AttachmentsSheet(
                             },
                         )
                         HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 20.dp),
+                            modifier = Modifier.padding(horizontal = spacing.pageHorizontal),
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                         )
                     }

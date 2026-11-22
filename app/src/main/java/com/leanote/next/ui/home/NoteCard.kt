@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.rounded.CloudOff
@@ -48,9 +49,12 @@ import com.leanote.next.ui.components.NoteMetaLine
 import com.leanote.next.ui.components.TagRow
 import com.leanote.next.ui.components.notePreview
 import com.leanote.next.ui.theme.LocalNoteCardBorder
+import com.leanote.next.ui.theme.LocalNoteCardCorner
 import com.leanote.next.ui.theme.LocalSurfaceEffect
 import com.leanote.next.ui.theme.LocalSurfaceTranslucency
 import com.leanote.next.ui.theme.LocalUiDensity
+import com.leanote.next.ui.theme.LocalUiSpacing
+import com.leanote.next.ui.theme.LocalUiStyleTokens
 import com.leanote.next.ui.theme.cardColor
 import com.leanote.next.ui.theme.sheenBrush
 import dagger.hilt.android.EntryPointAccessors
@@ -88,6 +92,9 @@ fun NoteCard(
     val effect = LocalSurfaceEffect.current
     val translucency = LocalSurfaceTranslucency.current
     val density = LocalUiDensity.current
+    val spacing = LocalUiSpacing.current
+    val styleTokens = LocalUiStyleTokens.current
+    val cardShape = RoundedCornerShape(LocalNoteCardCorner.current.dp)
     val showBorder = LocalNoteCardBorder.current
     val container = if (selected) {
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
@@ -107,16 +114,6 @@ fun NoteCard(
         )
         else -> null
     }
-    val horizontalPadding = when (density) {
-        UiDensity.COMPACT -> 14.dp
-        UiDensity.STANDARD -> 18.dp
-        UiDensity.COMFORTABLE -> 20.dp
-    }
-    val verticalPadding = when (density) {
-        UiDensity.COMPACT -> 8.dp
-        UiDensity.STANDARD -> 12.dp
-        UiDensity.COMFORTABLE -> 16.dp
-    }
     val previewLines = when (density) {
         UiDensity.COMPACT -> 1
         UiDensity.STANDARD -> 2
@@ -126,12 +123,12 @@ fun NoteCard(
     Box(modifier) {
         Surface(
             color = container,
-            shape = MaterialTheme.shapes.large,
-            tonalElevation = if (selected) 0.dp else 1.dp,
+            shape = cardShape,
+            shadowElevation = if (selected) 0.dp else styleTokens.cardShadowElevation,
             border = border,
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(MaterialTheme.shapes.large)
+                .clip(cardShape)
                 .combinedClickable(
                     onClick = { if (selectionMode) onToggleSelect() else onClick() },
                     onLongClick = onToggleSelect,
@@ -140,10 +137,10 @@ fun NoteCard(
             Box {
                 Column(
                     Modifier.padding(
-                        start = horizontalPadding,
-                        end = 8.dp,
-                        top = verticalPadding,
-                        bottom = verticalPadding + 2.dp,
+                        start = spacing.cardHorizontal,
+                        end = spacing.inlineGap,
+                        top = spacing.cardVertical,
+                        bottom = spacing.cardVertical + 2.dp,
                     ),
                 ) {
                     Row(verticalAlignment = Alignment.Top) {
@@ -248,7 +245,7 @@ fun NoteCard(
                         if (note.isMarkdown) {
                             Box(
                                 modifier = Modifier
-                                    .padding(start = 8.dp)
+                                    .padding(start = spacing.inlineGap)
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.secondaryContainer)
                                     .padding(horizontal = 6.dp, vertical = 1.dp),

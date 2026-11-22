@@ -2,296 +2,36 @@ package com.leanote.next.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.leanote.next.data.model.AppSettings
-import com.leanote.next.data.model.ThemeMode
-import com.leanote.next.data.model.ThemePalette
-import androidx.compose.material3.Shapes
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.text.font.FontSynthesis
 import com.leanote.next.data.model.SurfaceEffect
+import com.leanote.next.data.model.ThemeMode
 import com.leanote.next.data.model.UiDensity
-
-private val Ink = Color(0xFF1B1A17)
-/** 奶白色纸张背景。 */
-private val Paper = Color(0xFFFDFBF4)
-private val Teal = Color(0xFF0F766E)
-private val TealLight = Color(0xFF5EEAD4)
-
-private val LightColors = lightColorScheme(
-    primary = Teal,
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFCCFBF1),
-    onPrimaryContainer = Color(0xFF042F2C),
-    secondary = Color(0xFF3F5F5A),
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFD5E8E3),
-    onSecondaryContainer = Color(0xFF08201D),
-    tertiary = Color(0xFFB45309),
-    onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFFDE8C3),
-    onTertiaryContainer = Color(0xFF331E00),
-    error = Color(0xFFBA1A1A),
-    onError = Color.White,
-    errorContainer = Color(0xFFFFDAD6),
-    onErrorContainer = Color(0xFF410002),
-    background = Paper,
-    onBackground = Ink,
-    surface = Paper,
-    onSurface = Ink,
-    surfaceVariant = Color(0xFFE7E1D2),
-    onSurfaceVariant = Color(0xFF4A463C),
-    outline = Color(0xFF77705F),
-    outlineVariant = Color(0xFFC9C2B0),
-    surfaceTint = Teal,
-    inverseSurface = Color(0xFF2E3130),
-    inverseOnSurface = Color(0xFFF4F0E6),
-    inversePrimary = TealLight,
-    surfaceContainerLowest = Color(0xFFFFFEFA),
-    surfaceContainerLow = Color(0xFFF8F4EA),
-    surfaceContainer = Color(0xFFF2EDE1),
-    surfaceContainerHigh = Color(0xFFECE6D8),
-    surfaceContainerHighest = Color(0xFFE6DFD0),
-)
-
-private val DarkColors = darkColorScheme(
-    primary = TealLight,
-    onPrimary = Color(0xFF003731),
-    primaryContainer = Color(0xFF115E59),
-    onPrimaryContainer = Color(0xFFCCFBF1),
-    secondary = Color(0xFF9CC5BD),
-    onSecondary = Color(0xFF0F2A25),
-    secondaryContainer = Color(0xFF2F4A45),
-    onSecondaryContainer = Color(0xFFCDE8DE),
-    tertiary = Color(0xFFFBBF24),
-    onTertiary = Color(0xFF472A00),
-    tertiaryContainer = Color(0xFF663E00),
-    onTertiaryContainer = Color(0xFFFFE7B0),
-    error = Color(0xFFFFB4AB),
-    onError = Color(0xFF690005),
-    errorContainer = Color(0xFF93000A),
-    onErrorContainer = Color(0xFFFFDAD6),
-    background = Color(0xFF161A19),
-    onBackground = Color(0xFFE3E6E3),
-    surface = Color(0xFF161A19),
-    onSurface = Color(0xFFE3E6E3),
-    surfaceVariant = Color(0xFF3C4542),
-    onSurfaceVariant = Color(0xFFC2CCC8),
-    outline = Color(0xFF8A9490),
-    outlineVariant = Color(0xFF46504D),
-    surfaceTint = TealLight,
-    inverseSurface = Color(0xFFE1E3E0),
-    inverseOnSurface = Color(0xFF2E3130),
-    inversePrimary = Teal,
-    surfaceContainerLowest = Color(0xFF101413),
-    surfaceContainerLow = Color(0xFF1B201F),
-    surfaceContainer = Color(0xFF202624),
-    surfaceContainerHigh = Color(0xFF282E2C),
-    surfaceContainerHighest = Color(0xFF303735),
-)
-
-private data class PaletteColors(
-    val primary: Color,
-    val onPrimary: Color,
-    val primaryContainer: Color,
-    val onPrimaryContainer: Color,
-    val secondary: Color,
-    val onSecondary: Color,
-    val secondaryContainer: Color,
-    val onSecondaryContainer: Color,
-    val tertiary: Color,
-    val onTertiary: Color,
-    val tertiaryContainer: Color,
-    val onTertiaryContainer: Color,
-)
-
-private fun paletteColors(palette: ThemePalette, dark: Boolean): PaletteColors {
-    if (dark) {
-        return when (palette) {
-            ThemePalette.FOREST -> PaletteColors(
-                Color(0xFF5EEAD4), Color(0xFF003731), Color(0xFF115E59), Color(0xFFCCFBF1),
-                Color(0xFF9CC5BD), Color(0xFF0F2A25), Color(0xFF2F4A45), Color(0xFFCDE8DE),
-                Color(0xFFFBBF24), Color(0xFF472A00), Color(0xFF663E00), Color(0xFFFFE7B0),
-            )
-            ThemePalette.OCEAN -> PaletteColors(
-                Color(0xFF93B4FF), Color(0xFF002E69), Color(0xFF1E3A8A), Color(0xFFDBE6FF),
-                Color(0xFFB4C6E7), Color(0xFF1B2A3D), Color(0xFF3B4858), Color(0xFFD6E3F7),
-                Color(0xFF67E8F9), Color(0xFF00363A), Color(0xFF004F53), Color(0xFF9CF1F5),
-            )
-            ThemePalette.LAVENDER -> PaletteColors(
-                Color(0xFFC4B5FD), Color(0xFF2E1065), Color(0xFF4C1D95), Color(0xFFEDE9FE),
-                Color(0xFFC9BEDB), Color(0xFF342D42), Color(0xFF4B4358), Color(0xFFE9DEF8),
-                Color(0xFFF9A8D4), Color(0xFF4A1526), Color(0xFF633B48), Color(0xFFFFD8E4),
-            )
-            ThemePalette.SUNSET -> PaletteColors(
-                Color(0xFFFDBA74), Color(0xFF5C1900), Color(0xFF9A3412), Color(0xFFFFEDD5),
-                Color(0xFFE7BEB0), Color(0xFF442A20), Color(0xFF5D4036), Color(0xFFFFDBCB),
-                Color(0xFFFCD34D), Color(0xFF383000), Color(0xFF504600), Color(0xFFF8E364),
-            )
-            ThemePalette.GRAPHITE -> PaletteColors(
-                Color(0xFFCBD5E1), Color(0xFF0F172A), Color(0xFF334155), Color(0xFFE2E8F0),
-                Color(0xFFB3C0CF), Color(0xFF1E293B), Color(0xFF364152), Color(0xFFE2E8F0),
-                Color(0xFF94A3B8), Color(0xFF1A2430), Color(0xFF2C3A47), Color(0xFFE7ECF3),
-            )
-            ThemePalette.CREAM_PAPER -> PaletteColors(
-                Color(0xFFE7C876), Color(0xFF3A2F00), Color(0xFF51461B), Color(0xFFF4E3A7),
-                Color(0xFFC9B98F), Color(0xFF31281A), Color(0xFF463B2B), Color(0xFFE9DDC6),
-                Color(0xFFD9A066), Color(0xFF3B1E00), Color(0xFF5F350A), Color(0xFFFFD8B0),
-            )
-            ThemePalette.MONOCHROME -> PaletteColors(
-                Color(0xFFE5E7EB), Color(0xFF111827), Color(0xFF374151), Color(0xFFF9FAFB),
-                Color(0xFF9CA3AF), Color(0xFF1F2937), Color(0xFF374151), Color(0xFFE5E7EB),
-                Color(0xFF6B7280), Color(0xFF111827), Color(0xFF4B5563), Color(0xFFF3F4F6),
-            )
-            ThemePalette.NEON -> PaletteColors(
-                Color(0xFFF9A8C4), Color(0xFF4A0522), Color(0xFF831843), Color(0xFFFFE4EE),
-                Color(0xFFD6B4C1), Color(0xFF3A1D28), Color(0xFF53323E), Color(0xFFF5DDE4),
-                Color(0xFF7DD3FC), Color(0xFF00344A), Color(0xFF00526E), Color(0xFFCFF5FF),
-            )
-        }
-    }
-    return when (palette) {
-        ThemePalette.FOREST -> PaletteColors(
-            Teal, Color.White, Color(0xFFCCFBF1), Color(0xFF042F2C),
-            Color(0xFF3F5F5A), Color.White, Color(0xFFD5E8E3), Color(0xFF08201D),
-            Color(0xFFB45309), Color.White, Color(0xFFFDE8C3), Color(0xFF331E00),
-        )
-        ThemePalette.OCEAN -> PaletteColors(
-            Color(0xFF1D4ED8), Color.White, Color(0xFFDBE6FF), Color(0xFF00174B),
-            Color(0xFF44546F), Color.White, Color(0xFFDCE3F0), Color(0xFF0E1B2C),
-            Color(0xFF0E7490), Color.White, Color(0xFFCFF5F7), Color(0xFF002021),
-        )
-        ThemePalette.LAVENDER -> PaletteColors(
-            Color(0xFF6D28D9), Color.White, Color(0xFFEADDFF), Color(0xFF22005D),
-            Color(0xFF5D5470), Color.White, Color(0xFFE6DFF5), Color(0xFF1B1626),
-            Color(0xFF9D3C6B), Color.White, Color(0xFFFFD9E6), Color(0xFF3B071F),
-        )
-        ThemePalette.SUNSET -> PaletteColors(
-            Color(0xFFC2410C), Color.White, Color(0xFFFFDBCD), Color(0xFF3A0B00),
-            Color(0xFF6E5245), Color.White, Color(0xFFF3DED5), Color(0xFF291710),
-            Color(0xFFA16207), Color.White, Color(0xFFFAE8B8), Color(0xFF2A1D00),
-        )
-        ThemePalette.GRAPHITE -> PaletteColors(
-            Color(0xFF334155), Color.White, Color(0xFFDDE3EC), Color(0xFF0B1220),
-            Color(0xFF4B5A6E), Color.White, Color(0xFFE0E7EF), Color(0xFF131B26),
-            Color(0xFF64748B), Color.White, Color(0xFFE7ECF3), Color(0xFF1B2430),
-        )
-        ThemePalette.CREAM_PAPER -> PaletteColors(
-            Color(0xFFA16207), Color.White, Color(0xFFF6E7C1), Color(0xFF2A1D00),
-            Color(0xFF7A6A47), Color.White, Color(0xFFEFE5D0), Color(0xFF251E0F),
-            Color(0xFF5E3A14), Color.White, Color(0xFFE8C8A0), Color(0xFF1D0F00),
-        )
-        ThemePalette.MONOCHROME -> PaletteColors(
-            Color(0xFF111827), Color.White, Color(0xFFE5E7EB), Color(0xFF000000),
-            Color(0xFF374151), Color.White, Color(0xFFE5E7EB), Color(0xFF111827),
-            Color(0xFF4B5563), Color.White, Color(0xFFF3F4F6), Color(0xFF111827),
-        )
-        ThemePalette.NEON -> PaletteColors(
-            Color(0xFFBE185D), Color.White, Color(0xFFFFD9E4), Color(0xFF3F0018),
-            Color(0xFF7C5463), Color.White, Color(0xFFF5DDE4), Color(0xFF2A1520),
-            Color(0xFF0369A1), Color.White, Color(0xFFCFE9FF), Color(0xFF001B33),
-        )
-    }
-}
-
-private fun colorSchemeFor(palette: ThemePalette, dark: Boolean): ColorScheme {
-    val base = if (dark) DarkColors else LightColors
-    val colors = paletteColors(palette, dark)
-    return base.copy(
-        primary = colors.primary,
-        onPrimary = colors.onPrimary,
-        primaryContainer = colors.primaryContainer,
-        onPrimaryContainer = colors.onPrimaryContainer,
-        secondary = colors.secondary,
-        onSecondary = colors.onSecondary,
-        secondaryContainer = colors.secondaryContainer,
-        onSecondaryContainer = colors.onSecondaryContainer,
-        tertiary = colors.tertiary,
-        onTertiary = colors.onTertiary,
-        tertiaryContainer = colors.tertiaryContainer,
-        onTertiaryContainer = colors.onTertiaryContainer,
-        surfaceTint = colors.primary,
-        inversePrimary = colors.primary,
-    )
-}
+import com.leanote.next.data.model.UiStyle
 
 val ReadingFont: FontFamily = FontFamily.Serif
 val MonoFont: FontFamily = FontFamily.Monospace
-
-/** 每种配色自带的视觉风格（形状 + 字体预设）。 */
-private fun shapesFor(palette: ThemePalette): Shapes = when (palette) {
-    ThemePalette.CREAM_PAPER -> Shapes(
-        extraSmall = RoundedCornerShape(6.dp),
-        small = RoundedCornerShape(8.dp),
-        medium = RoundedCornerShape(10.dp),
-        large = RoundedCornerShape(12.dp),
-        extraLarge = RoundedCornerShape(16.dp),
-    )
-    ThemePalette.MONOCHROME -> Shapes(
-        extraSmall = RoundedCornerShape(0.dp),
-        small = RoundedCornerShape(0.dp),
-        medium = RoundedCornerShape(0.dp),
-        large = RoundedCornerShape(0.dp),
-        extraLarge = RoundedCornerShape(0.dp),
-    )
-    ThemePalette.NEON -> Shapes(
-        extraSmall = RoundedCornerShape(4.dp),
-        small = RoundedCornerShape(6.dp),
-        medium = RoundedCornerShape(8.dp),
-        large = RoundedCornerShape(12.dp),
-        extraLarge = RoundedCornerShape(16.dp),
-    )
-    else -> LeanoteShapes
-}
-
-private fun typographyFor(palette: ThemePalette): Typography = when (palette) {
-    ThemePalette.CREAM_PAPER -> {
-        val serif = FontFamily.Serif
-        LeanoteTypography.copy(
-            displayLarge = LeanoteTypography.displayLarge.withFamily(serif),
-            displayMedium = LeanoteTypography.displayMedium.withFamily(serif),
-            headlineLarge = LeanoteTypography.headlineLarge.withFamily(serif).copy(fontWeight = FontWeight.Bold),
-            headlineMedium = LeanoteTypography.headlineMedium.withFamily(serif).copy(fontWeight = FontWeight.Bold),
-            headlineSmall = LeanoteTypography.headlineSmall.withFamily(serif),
-            titleLarge = LeanoteTypography.titleLarge.withFamily(serif),
-            bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 26.sp, fontFamily = serif),
-            bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 22.sp, fontFamily = serif),
-        )
-    }
-    ThemePalette.MONOCHROME -> LeanoteTypography.copy(
-        titleLarge = LeanoteTypography.titleLarge.copy(fontWeight = FontWeight.Black, letterSpacing = (-1.5).sp),
-        titleMedium = LeanoteTypography.titleMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
-        bodyLarge = TextStyle(fontSize = 15.sp, lineHeight = 24.sp, letterSpacing = 0.3.sp),
-        bodyMedium = TextStyle(fontSize = 13.sp, lineHeight = 20.sp, letterSpacing = 0.3.sp),
-    )
-    ThemePalette.NEON -> LeanoteTypography.copy(
-        titleLarge = LeanoteTypography.titleLarge.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = 0.sp),
-        bodyLarge = TextStyle(fontSize = 15.sp, lineHeight = 24.sp, fontFamily = FontFamily.Monospace),
-    )
-    else -> LeanoteTypography
-}
-
-private fun TextStyle.withFamily(family: FontFamily): TextStyle = copy(
-    fontFamily = family,
-    fontSynthesis = FontSynthesis.All,
-)
 
 private val BaseTypography = Typography()
 
@@ -315,6 +55,112 @@ val LeanoteShapes = Shapes(
     large = RoundedCornerShape(22.dp),
     extraLarge = RoundedCornerShape(28.dp),
 )
+
+private fun shapesFor(style: UiStyle): Shapes = when (style) {
+    UiStyle.MATERIAL -> LeanoteShapes
+    UiStyle.MIUIX -> Shapes(
+        extraSmall = RoundedCornerShape(10.dp),
+        small = RoundedCornerShape(16.dp),
+        medium = RoundedCornerShape(20.dp),
+        large = RoundedCornerShape(26.dp),
+        extraLarge = RoundedCornerShape(32.dp),
+    )
+    UiStyle.CUPERTINO -> Shapes(
+        extraSmall = RoundedCornerShape(6.dp),
+        small = RoundedCornerShape(10.dp),
+        medium = RoundedCornerShape(12.dp),
+        large = RoundedCornerShape(16.dp),
+        extraLarge = RoundedCornerShape(20.dp),
+    )
+    UiStyle.FLUENT -> Shapes(
+        extraSmall = RoundedCornerShape(2.dp),
+        small = RoundedCornerShape(4.dp),
+        medium = RoundedCornerShape(6.dp),
+        large = RoundedCornerShape(8.dp),
+        extraLarge = RoundedCornerShape(10.dp),
+    )
+}
+
+private fun typographyFor(style: UiStyle): Typography = when (style) {
+    UiStyle.MATERIAL -> LeanoteTypography
+    UiStyle.MIUIX -> LeanoteTypography.copy(
+        headlineLarge = LeanoteTypography.headlineLarge.copy(fontSize = 34.sp, fontWeight = FontWeight.Bold),
+        headlineMedium = LeanoteTypography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+        titleLarge = LeanoteTypography.titleLarge.copy(fontSize = 24.sp, fontWeight = FontWeight.Bold),
+        titleMedium = LeanoteTypography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+        labelLarge = LeanoteTypography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+    )
+    UiStyle.CUPERTINO -> LeanoteTypography.copy(
+        headlineLarge = LeanoteTypography.headlineLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.sp),
+        titleLarge = LeanoteTypography.titleLarge.copy(fontSize = 20.sp, fontWeight = FontWeight.SemiBold),
+        titleMedium = LeanoteTypography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+        bodyLarge = LeanoteTypography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 25.sp, letterSpacing = 0.sp),
+        bodyMedium = LeanoteTypography.bodyMedium.copy(letterSpacing = 0.sp),
+        labelLarge = LeanoteTypography.labelLarge.copy(fontWeight = FontWeight.Normal),
+    )
+    UiStyle.FLUENT -> LeanoteTypography.copy(
+        displayLarge = LeanoteTypography.displayLarge.copy(letterSpacing = 0.sp),
+        headlineLarge = LeanoteTypography.headlineLarge.copy(letterSpacing = 0.sp),
+        titleLarge = LeanoteTypography.titleLarge.copy(fontSize = 20.sp, letterSpacing = 0.sp),
+        titleMedium = LeanoteTypography.titleMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
+        bodyLarge = TextStyle(fontSize = 15.sp, lineHeight = 24.sp, fontFamily = FontFamily.SansSerif),
+        bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 21.sp, fontFamily = FontFamily.SansSerif),
+        labelLarge = TextStyle(fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold),
+    )
+}
+
+/** 各界面风格在共享组件上的结构差异。 */
+@Immutable
+data class UiStyleTokens(
+    val cardBorderWidth: Dp,
+    val cardShadowElevation: Dp,
+    val navigationLeadingIndicator: Boolean,
+    val centerTopBarTitle: Boolean,
+)
+
+private val MaterialStyleTokens = UiStyleTokens(
+    cardBorderWidth = 0.dp,
+    cardShadowElevation = 1.dp,
+    navigationLeadingIndicator = false,
+    centerTopBarTitle = false,
+)
+
+private fun styleTokensFor(style: UiStyle): UiStyleTokens = when (style) {
+    UiStyle.MATERIAL -> MaterialStyleTokens
+    UiStyle.MIUIX -> UiStyleTokens(0.dp, 0.dp, false, false)
+    UiStyle.CUPERTINO -> UiStyleTokens(0.5.dp, 0.dp, false, true)
+    UiStyle.FLUENT -> UiStyleTokens(1.dp, 0.dp, true, false)
+}
+
+/** 应用内结构性间距；字体和图标尺寸由全局缩放单独控制。 */
+@Immutable
+data class UiSpacing(
+    val pageHorizontal: Dp,
+    val pageVertical: Dp,
+    val cardHorizontal: Dp,
+    val cardVertical: Dp,
+    val contentVertical: Dp,
+    val sectionGap: Dp,
+    val itemGap: Dp,
+    val inlineGap: Dp,
+)
+
+private val StandardSpacing = UiSpacing(
+    pageHorizontal = 16.dp,
+    pageVertical = 12.dp,
+    cardHorizontal = 18.dp,
+    cardVertical = 12.dp,
+    contentVertical = 16.dp,
+    sectionGap = 18.dp,
+    itemGap = 10.dp,
+    inlineGap = 8.dp,
+)
+
+private fun spacingFor(density: UiDensity): UiSpacing = when (density) {
+    UiDensity.COMPACT -> UiSpacing(12.dp, 8.dp, 14.dp, 8.dp, 12.dp, 12.dp, 6.dp, 6.dp)
+    UiDensity.STANDARD -> StandardSpacing
+    UiDensity.COMFORTABLE -> UiSpacing(20.dp, 16.dp, 22.dp, 16.dp, 20.dp, 24.dp, 14.dp, 12.dp)
+}
 
 data class ColorRole(
     val key: String,
@@ -426,20 +272,37 @@ fun LeanoteTheme(settings: AppSettings, content: @Composable () -> Unit) {
             if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         else -> colorSchemeFor(settings.palette, dark)
     }
+    val uiScale = settings.uiScale.coerceIn(85, 130)
+    val scale = uiScale / 100f
+    val baseDensity = LocalDensity.current
+    // dp 与 sp 都会使用缩放后的 density；保留系统 fontScale，避免字体重复缩放。
+    val scaledDensity = Density(
+        density = baseDensity.density * scale,
+        fontScale = baseDensity.fontScale,
+    )
     CompositionLocalProvider(
+        LocalDensity provides scaledDensity,
+        LocalUiScale provides uiScale,
         LocalSurfaceEffect provides settings.surfaceEffect,
         LocalSurfaceTranslucency provides settings.surfaceTranslucency,
         LocalUiDensity provides settings.density,
+        LocalUiSpacing provides spacingFor(settings.density),
+        LocalUiStyle provides settings.uiStyle,
+        LocalUiStyleTokens provides styleTokensFor(settings.uiStyle),
+        LocalNoteCardCorner provides settings.noteCardCorner.coerceIn(0, 28),
         LocalNoteCardBorder provides settings.noteCardBorder,
     ) {
         MaterialTheme(
             colorScheme = baseScheme.withCustomColors(settings.customColors),
-            typography = typographyFor(settings.palette),
-            shapes = shapesFor(settings.palette),
+            typography = typographyFor(settings.uiStyle),
+            shapes = shapesFor(settings.uiStyle),
             content = content,
         )
     }
 }
+
+/** 当前应用内缩放百分比，供 AndroidView 与 WebView 使用。 */
+val LocalUiScale = staticCompositionLocalOf { 100 }
 
 /** 当前界面材质效果，由主题统一提供。 */
 val LocalSurfaceEffect = staticCompositionLocalOf { SurfaceEffect.NONE }
@@ -447,8 +310,17 @@ val LocalSurfaceEffect = staticCompositionLocalOf { SurfaceEffect.NONE }
 /** 当前材质透明强度（0–60），由主题统一提供。 */
 val LocalSurfaceTranslucency = staticCompositionLocalOf { 20 }
 
-/** 当前界面紧凑度，由主题统一提供。 */
+/** 当前界面紧凑度，保留给预览行数等密度专属行为。 */
 val LocalUiDensity = staticCompositionLocalOf { UiDensity.STANDARD }
+
+/** 当前应用内语义化间距。 */
+val LocalUiSpacing = staticCompositionLocalOf { StandardSpacing }
+
+val LocalUiStyle = staticCompositionLocalOf { UiStyle.MATERIAL }
+val LocalUiStyleTokens = staticCompositionLocalOf { MaterialStyleTokens }
+
+/** 笔记卡片独立圆角（dp），由主题统一提供。 */
+val LocalNoteCardCorner = staticCompositionLocalOf { 22 }
 
 /** 笔记卡片是否显示边框，由主题统一提供。 */
 val LocalNoteCardBorder = staticCompositionLocalOf { true }
@@ -481,9 +353,7 @@ fun SurfaceEffect.cardColor(
 
 /** 页面背景渐变，材质效果关闭时保持纯色。 */
 fun SurfaceEffect.pageBrush(scheme: ColorScheme): Brush = when (this) {
-    SurfaceEffect.NONE -> {
-        Brush.verticalGradient(listOf(scheme.background, scheme.background))
-    }
+    SurfaceEffect.NONE -> Brush.verticalGradient(listOf(scheme.background, scheme.background))
     SurfaceEffect.FROSTED -> Brush.verticalGradient(
         listOf(
             scheme.background,

@@ -1,5 +1,6 @@
 package com.leanote.next.ui.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -52,6 +53,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.leanote.next.ui.theme.ColorRole
 import com.leanote.next.ui.theme.ColorRoles
+import com.leanote.next.ui.theme.LocalUiSpacing
+import com.leanote.next.ui.theme.LocalUiStyleTokens
 import com.leanote.next.ui.theme.colorForRole
 import com.leanote.next.ui.theme.parseHexColor
 
@@ -83,17 +86,29 @@ fun CustomColorsSection(
     var editingRole by remember { mutableStateOf<ColorRole?>(null) }
     // 默认收起，避免设置页一进来就被十几个颜色项占满。
     var expanded by rememberSaveable { mutableStateOf(false) }
+    val spacing = LocalUiSpacing.current
+    val styleTokens = LocalUiStyleTokens.current
 
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = MaterialTheme.shapes.large,
+        shadowElevation = styleTokens.cardShadowElevation,
+        border = styleTokens.cardBorderWidth.takeIf { it > 0.dp }?.let {
+            BorderStroke(it, MaterialTheme.colorScheme.outlineVariant)
+        },
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+        Column(
+            Modifier.padding(
+                horizontal = spacing.cardHorizontal,
+                vertical = spacing.cardVertical,
+            ),
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { expanded = !expanded },
+                    .clickable { expanded = !expanded }
+                    .heightIn(min = 48.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
@@ -117,7 +132,7 @@ fun CustomColorsSection(
             }
 
             if (expanded) {
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(spacing.itemGap))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(
                         onClick = onClearAll,
@@ -139,12 +154,13 @@ fun CustomColorsSection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { editingRole = role }
-                            .padding(vertical = 12.dp),
+                            .heightIn(min = 48.dp)
+                            .padding(vertical = spacing.itemGap),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(role.displayName, style = MaterialTheme.typography.bodyMedium)
                         if (customized) {
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(spacing.inlineGap))
                             Surface(
                                 color = MaterialTheme.colorScheme.primaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -198,6 +214,7 @@ private fun CustomColorDialog(
     onConfirm: (String?) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val spacing = LocalUiSpacing.current
     val startColor = parseHexColor(initialValue) ?: fallbackColor
     val startHsv = remember(role.key, initialValue) { startColor.toHsv() }
     var hue by remember(role.key, initialValue) { mutableStateOf(startHsv[0]) }
@@ -233,7 +250,7 @@ private fun CustomColorDialog(
                             .background(parsedColor ?: wheelColor)
                             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
                     )
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(spacing.inlineGap))
                     Column {
                         Text("实时预览", style = MaterialTheme.typography.bodyMedium)
                         Text(
@@ -243,14 +260,14 @@ private fun CustomColorDialog(
                         )
                     }
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(spacing.contentVertical))
                 // 颜色盘：外圈选色相，圆心方向表示浓度
                 ColorWheel(
                     hue = hue,
                     saturation = saturation,
                     onPick = { h, s -> applyHsv(h, s, value) },
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(spacing.itemGap))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("浓度", style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.weight(1f))
@@ -286,13 +303,13 @@ private fun CustomColorDialog(
                         )
                     },
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(spacing.itemGap))
                 Text("常用颜色", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(spacing.itemGap))
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(spacing.inlineGap),
+                    verticalArrangement = Arrangement.spacedBy(spacing.itemGap),
                 ) {
                     QuickColors.forEach { color ->
                         Box(
@@ -319,7 +336,10 @@ private fun CustomColorDialog(
             }
         },
         dismissButton = {
-            Row {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(spacing.inlineGap),
+                verticalArrangement = Arrangement.spacedBy(spacing.itemGap),
+            ) {
                 TextButton(onClick = { onConfirm(null) }) {
                     Text("恢复默认")
                 }

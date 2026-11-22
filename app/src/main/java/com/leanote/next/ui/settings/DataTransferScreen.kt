@@ -2,6 +2,7 @@ package com.leanote.next.ui.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -45,6 +46,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.leanote.next.data.transfer.ExportFormat
+import com.leanote.next.ui.components.LeanoteTopAppBar
+import com.leanote.next.ui.theme.LocalUiSpacing
+import com.leanote.next.ui.theme.LocalUiStyleTokens
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -59,6 +63,7 @@ fun DataTransferScreen(
     val status by viewModel.status.collectAsStateWithLifecycle()
     val format by viewModel.format.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    val spacing = LocalUiSpacing.current
 
     val backupLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/zip"),
@@ -89,7 +94,7 @@ fun DataTransferScreen(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            TopAppBar(
+            LeanoteTopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack, enabled = !busy) {
                         Icon(Icons.Rounded.ArrowBack, contentDescription = "返回")
@@ -106,8 +111,11 @@ fun DataTransferScreen(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(
+                horizontal = spacing.pageHorizontal,
+                vertical = spacing.pageVertical,
+            ),
+            verticalArrangement = Arrangement.spacedBy(spacing.itemGap),
         ) {
             if (busy) {
                 item {
@@ -116,7 +124,7 @@ fun DataTransferScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(12.dp))
+                        Spacer(Modifier.width(spacing.inlineGap))
                         Text(
                             text = status,
                             style = MaterialTheme.typography.bodyMedium,
@@ -132,7 +140,7 @@ fun DataTransferScreen(
                     TransferDescription(
                         "备份当前账户的全部笔记（含回收站）、笔记本、应用设置和已保存的本地图片。",
                     )
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(spacing.contentVertical))
                     Button(
                         onClick = { backupLauncher.launch(backupFileName()) },
                         enabled = !busy,
@@ -140,7 +148,7 @@ fun DataTransferScreen(
                     ) {
                         Text("备份全部笔记与设置")
                     }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(spacing.itemGap))
                     OutlinedButton(
                         onClick = { restoreLauncher.launch(arrayOf("application/zip")) },
                         enabled = !busy,
@@ -148,7 +156,7 @@ fun DataTransferScreen(
                     ) {
                         Text("从备份恢复")
                     }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(spacing.itemGap))
                     Text(
                         text = "恢复到当前账户：同 serverId 的笔记会覆盖为备份版本，并保留现有本地 ID。",
                         style = MaterialTheme.typography.labelSmall,
@@ -163,7 +171,7 @@ fun DataTransferScreen(
                     TransferDescription(
                         "支持 .md、.markdown、.txt、.html、.htm 和 Evernote .enex。文件将导入当前账户的第一个顶层笔记本，并标记为待同步。",
                     )
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(spacing.contentVertical))
                     Button(
                         onClick = {
                             importLauncher.launch(
@@ -188,8 +196,12 @@ fun DataTransferScreen(
             item {
                 TransferCard {
                     TransferDescription("导出当前账户全部非回收站笔记。")
-                    Spacer(Modifier.height(12.dp))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Spacer(Modifier.height(spacing.contentVertical))
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(spacing.inlineGap),
+                        verticalArrangement = Arrangement.spacedBy(spacing.itemGap),
+                    ) {
                         ExportFormat.entries.forEach { item ->
                             FilterChip(
                                 selected = format == item,
@@ -199,7 +211,7 @@ fun DataTransferScreen(
                             )
                         }
                     }
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(spacing.itemGap))
                     Text(
                         text = when (format) {
                             ExportFormat.MARKDOWN -> "Markdown 笔记保存为 .md，富文本笔记保存为完整 .html 文档。"
@@ -209,7 +221,7 @@ fun DataTransferScreen(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(spacing.contentVertical))
                     Button(
                         onClick = { exportLauncher.launch(null) },
                         enabled = !busy,
@@ -225,23 +237,39 @@ fun DataTransferScreen(
 
 @Composable
 private fun TransferCard(content: @Composable ColumnScope.() -> Unit) {
+    val spacing = LocalUiSpacing.current
+    val styleTokens = LocalUiStyleTokens.current
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = MaterialTheme.shapes.large,
+        shadowElevation = styleTokens.cardShadowElevation,
+        border = styleTokens.cardBorderWidth.takeIf { it > 0.dp }?.let {
+            BorderStroke(it, MaterialTheme.colorScheme.outlineVariant)
+        },
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp), content = content)
+        Column(
+            Modifier.padding(
+                horizontal = spacing.cardHorizontal,
+                vertical = spacing.cardVertical,
+            ),
+            content = content,
+        )
     }
 }
 
 @Composable
 private fun TransferSectionTitle(text: String) {
+    val spacing = LocalUiSpacing.current
     Text(
         text = text,
         style = MaterialTheme.typography.labelLarge,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 6.dp, top = 8.dp),
+        modifier = Modifier.padding(
+            start = spacing.inlineGap,
+            top = spacing.sectionGap - spacing.itemGap,
+        ),
     )
 }
 

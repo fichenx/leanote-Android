@@ -24,6 +24,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import com.leanote.next.data.model.Account
 import com.leanote.next.data.repo.ImageRepository
+import com.leanote.next.ui.theme.LocalUiScale
 import io.noties.markwon.Markwon
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
 import io.noties.markwon.ext.tables.TablePlugin
@@ -45,6 +46,7 @@ fun MarkdownContent(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val uiScale = LocalUiScale.current
     val textColor = MaterialTheme.colorScheme.onSurface
     val linkColor = MaterialTheme.colorScheme.primary
     val quoteColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -84,12 +86,13 @@ fun MarkdownContent(
                 setTextIsSelectable(true)
                 setTextColor(textColor.toArgb())
                 setLineSpacing(0f, 1.35f)
-                textSize = 16f
+                textSize = 16f * (uiScale / 100f)
                 setPadding(0, 0, 0, 0)
                 linksClickable = true
             }
         },
         update = { textView ->
+            textView.textSize = 16f * (uiScale / 100f)
             if (textView.tag != markdown) {
                 textView.tag = markdown
                 markwon.setMarkdown(textView, markdown)
@@ -111,6 +114,7 @@ fun HtmlContent(
     fitToWidth: Boolean = true,
 ) {
     val context = LocalContext.current
+    val uiScale = LocalUiScale.current
     val bg = MaterialTheme.colorScheme.background.toArgb()
     val fg = MaterialTheme.colorScheme.onSurface.toArgb()
     val link = MaterialTheme.colorScheme.primary.toArgb()
@@ -146,6 +150,7 @@ fun HtmlContent(
                 settings.loadsImagesAutomatically = true
                 settings.allowFileAccess = false
                 settings.allowContentAccess = false
+                settings.textZoom = uiScale
                 webViewClient = object : WebViewClient() {
                     override fun shouldInterceptRequest(
                         view: WebView,
@@ -180,6 +185,7 @@ fun HtmlContent(
             }
         },
         update = { webView ->
+            webView.settings.textZoom = uiScale
             webView.isHorizontalScrollBarEnabled = !fitToWidth
             if (webView.tag != fullHtml) {
                 webView.tag = fullHtml
