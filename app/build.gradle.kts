@@ -25,8 +25,8 @@ android {
         applicationId = "com.leanote.next"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "1.5.2"
+        versionCode = 13
+        versionName = "1.5.3"
 
         vectorDrawables.useSupportLibrary = true
     }
@@ -149,4 +149,6 @@ dependencies {
     implementation(libs.markwon.tasklist)
     implementation(libs.markwon.linkify)
     implementation(libs.markwon.html)
+
+    implementation(libs.jsoup)
 }

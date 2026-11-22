@@ -7,6 +7,7 @@ import com.leanote.next.data.model.Account
 import com.leanote.next.data.model.ApiException
 import com.leanote.next.data.prefs.AccountStore
 import com.leanote.next.data.remote.ApiClient
+import com.leanote.next.data.repo.ImageRepository
 import com.leanote.next.data.repo.NoteRepository
 import com.leanote.next.data.repo.NotebookRepository
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +33,7 @@ class SyncEngine @Inject constructor(
     private val notebookDao: NotebookDao,
     private val noteRepository: NoteRepository,
     private val notebookRepository: NotebookRepository,
+    private val imageRepository: ImageRepository,
 ) {
 
     suspend fun sync(): SyncSummary = withContext(Dispatchers.IO) {
@@ -55,6 +57,7 @@ class SyncEngine @Inject constructor(
                 notebookUsn = notebookUsn,
                 lastSyncAt = System.currentTimeMillis(),
             )
+            imageRepository.invalidateThumbnailCache()
 
             SyncSummary(
                 success = true,

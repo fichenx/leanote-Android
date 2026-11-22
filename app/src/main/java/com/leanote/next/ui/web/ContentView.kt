@@ -1,6 +1,7 @@
 package com.leanote.next.ui.web
 
 import android.annotation.SuppressLint
+import android.text.Spanned
 import android.graphics.Color as AndroidColor
 import android.net.Uri
 import android.webkit.WebResourceRequest
@@ -9,7 +10,12 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
@@ -22,10 +28,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
+import androidx.core.view.doOnNextLayout
 import com.leanote.next.data.model.Account
 import com.leanote.next.data.repo.ImageRepository
 import com.leanote.next.ui.theme.LocalUiScale
 import io.noties.markwon.Markwon
+import io.noties.markwon.core.spans.HeadingSpan
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
 import io.noties.markwon.ext.tables.TablePlugin
 import io.noties.markwon.ext.tasklist.TaskListPlugin
@@ -33,9 +41,18 @@ import io.noties.markwon.html.HtmlPlugin
 import io.noties.markwon.image.ImagesPlugin
 import io.noties.markwon.linkify.LinkifyPlugin
 import kotlinx.coroutines.runBlocking
+import org.jsoup.Jsoup
 import java.io.ByteArrayInputStream
 
 private const val LOCAL_HOST = "https://leanote.local"
+
+data class DocumentHeading(
+    val id: Int,
+    val level: Int,
+    val title: String,
+    val anchor: String = "",
+    val textOffset: Int = -1,
+)
 
 /**
  * Markdown 阅读视图（Markwon）。图片地址需事先经过 [ImageRepository.prepareForRender] 处理。
@@ -44,6 +61,10 @@ private const val LOCAL_HOST = "https://leanote.local"
 fun MarkdownContent(
     markdown: String,
     modifier: Modifier = Modifier,
+    navigationTarget: DocumentHeading? = null,
+    onHeadingsChanged: (List<DocumentHeading>) -> Unit = {},
+    onNavigate: (Int) -> Unit = {},
+    onNavigationHandled: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val uiScale = LocalUiScale.current
@@ -95,11 +116,52 @@ fun MarkdownContent(
             textView.textSize = 16f * (uiScale / 100f)
             if (textView.tag != markdown) {
                 textView.tag = markdown
-                markwon.setMarkdown(textView, markdown)
+                val parsed = markwon.toMarkdown(markdown)
+                val headings = parsed.documentHeadings()
+                markwon.setParsedMarkdown(textView, parsed)
+                textView.post {
+                    if (textView.tag == markdown) onHeadingsChanged(headings)
+                }
+            }
+            val target = navigationTarget
+            if (target != null && target.textOffset >= 0) {
+                textView.post {
+                    fun navigate() {
+                        val layout = textView.layout
+                        if (layout == null) {
+                            textView.doOnNextLayout { navigate() }
+                            return
+                        }
+                        val offset = target.textOffset.coerceIn(0, textView.text.length)
+                        val line = layout.getLineForOffset(offset)
+                        onNavigate(textView.totalPaddingTop + layout.getLineTop(line))
+                        onNavigationHandled()
+                    }
+                    navigate()
+                }
             }
         },
     )
 }
+
+private fun Spanned.documentHeadings(): List<DocumentHeading> =
+    getSpans(0, length, HeadingSpan::class.java)
+        .mapNotNull { span ->
+            val start = getSpanStart(span)
+            val end = getSpanEnd(span)
+            if (start < 0 || end <= start) return@mapNotNull null
+            val title = subSequence(start, end).toString().trim()
+            if (title.isEmpty()) null else Triple(start, span.level, title)
+        }
+        .sortedBy { it.first }
+        .mapIndexed { index, heading ->
+            DocumentHeading(
+                id = index,
+                level = heading.second,
+                title = heading.third,
+                textOffset = heading.first,
+            )
+        }
 
 /**
  * 富文本（HTML）阅读视图。图片由本地缓存优先加载，远程图片自动补 token。
@@ -112,6 +174,9 @@ fun HtmlContent(
     images: ImageRepository,
     modifier: Modifier = Modifier,
     fitToWidth: Boolean = true,
+    navigationTarget: DocumentHeading? = null,
+    onHeadingsChanged: (List<DocumentHeading>) -> Unit = {},
+    onNavigationHandled: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val uiScale = LocalUiScale.current
@@ -134,8 +199,25 @@ fun HtmlContent(
         .toArgb()
     val border = MaterialTheme.colorScheme.outlineVariant.toArgb()
 
-    val fullHtml = remember(html, bg, fg, link, quote, codeBg, codeBorder, border, fitToWidth) {
-        buildHtmlDocument(html, bg, fg, link, quote, codeBg, codeBorder, border, fitToWidth)
+    val prepared = remember(html) { prepareHtmlForNavigation(html) }
+    val fullHtml = remember(prepared.body, bg, fg, link, quote, codeBg, codeBorder, border, fitToWidth) {
+        buildHtmlDocument(prepared.body, bg, fg, link, quote, codeBg, codeBorder, border, fitToWidth)
+    }
+    val currentFullHtml by rememberUpdatedState(fullHtml)
+    var activeWebView by remember { mutableStateOf<WebView?>(null) }
+    var loadedDocument by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(prepared) { onHeadingsChanged(prepared.headings) }
+    LaunchedEffect(navigationTarget, loadedDocument, fullHtml, activeWebView) {
+        val target = navigationTarget ?: return@LaunchedEffect
+        val webView = activeWebView ?: return@LaunchedEffect
+        if (loadedDocument != fullHtml) return@LaunchedEffect
+        webView.evaluateJavascript(
+            "(function(){var e=document.getElementById('${target.anchor}');" +
+                "if(e){e.scrollIntoView({block:'start',behavior:'smooth'});}return !!e;})()",
+            null,
+        )
+        onNavigationHandled()
     }
 
     AndroidView(
@@ -145,7 +227,8 @@ fun HtmlContent(
                 setBackgroundColor(AndroidColor.TRANSPARENT)
                 isVerticalScrollBarEnabled = false
                 isHorizontalScrollBarEnabled = !fitToWidth
-                settings.javaScriptEnabled = false
+                // 正文已在 prepareHtmlForNavigation 中静态化，这里仅执行应用固定的锚点脚本。
+                settings.javaScriptEnabled = true
                 settings.domStorageEnabled = false
                 settings.loadsImagesAutomatically = true
                 settings.allowFileAccess = false
@@ -181,7 +264,13 @@ fun HtmlContent(
                         }
                         return true
                     }
+
+                    override fun onPageFinished(view: WebView, url: String) {
+                        loadedDocument = currentFullHtml
+                    }
                 }
+                activeWebView = this
+                loadedDocument = null
             }
         },
         update = { webView ->
@@ -193,6 +282,47 @@ fun HtmlContent(
             }
         },
     )
+}
+
+private data class PreparedHtml(
+    val body: String,
+    val headings: List<DocumentHeading>,
+)
+
+private fun prepareHtmlForNavigation(body: String): PreparedHtml {
+    val document = Jsoup.parseBodyFragment(body)
+    document.outputSettings().prettyPrint(false)
+    document.select("script, iframe, object, embed, applet, base, meta").remove()
+    document.select("*").forEach { element ->
+        element.attributes().asList().forEach { attribute ->
+            val key = attribute.key.lowercase()
+            val value = attribute.value.trim().lowercase()
+                .filterNot { it.isWhitespace() || it == '\u0000' }
+            val dangerousUrl = (key == "href" || key == "src" || key == "action" || key == "formaction" || key == "xlink:href") &&
+                (value.startsWith("javascript:") || value.startsWith("vbscript:"))
+            if (key.startsWith("on") || key == "srcdoc" || dangerousUrl) {
+                element.removeAttr(attribute.key)
+            }
+        }
+    }
+
+    val headings = mutableListOf<DocumentHeading>()
+    document.select("h1, h2, h3, h4, h5, h6").forEach { element ->
+        val title = element.text().trim()
+        if (title.isNotEmpty()) {
+            val index = headings.size
+            val anchor = "leanote-outline-$index"
+            // 新增内部锚点而不覆盖已有 id，避免破坏笔记原来的页内链接。
+            element.prependElement("a").attr("id", anchor)
+            headings += DocumentHeading(
+                id = index,
+                level = element.tagName().substring(1).toInt(),
+                title = title,
+                anchor = anchor,
+            )
+        }
+    }
+    return PreparedHtml(document.body().html(), headings)
 }
 
 internal fun buildHtmlDocument(

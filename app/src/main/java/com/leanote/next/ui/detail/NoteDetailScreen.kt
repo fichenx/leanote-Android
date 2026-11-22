@@ -5,24 +5,30 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.Toc
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CropFree
 import androidx.compose.material.icons.rounded.DeleteForever
@@ -38,7 +44,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -54,6 +62,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -77,6 +86,7 @@ import com.leanote.next.ui.theme.LocalSurfaceTranslucency
 import com.leanote.next.ui.theme.LocalUiSpacing
 import com.leanote.next.ui.theme.barColor
 import com.leanote.next.ui.theme.pageBrush
+import com.leanote.next.ui.web.DocumentHeading
 import com.leanote.next.ui.web.HtmlContent
 import com.leanote.next.ui.web.MarkdownContent
 import com.leanote.next.util.TimeUtils
@@ -98,6 +108,9 @@ fun NoteDetailScreen(
     var moreMenu by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var showAttachments by remember { mutableStateOf(false) }
+    var showDocumentOutline by remember { mutableStateOf(false) }
+    var documentHeadings by remember(localId) { mutableStateOf<List<DocumentHeading>>(emptyList()) }
+    var documentNavigationTarget by remember(localId) { mutableStateOf<DocumentHeading?>(null) }
     var fitToWidth by rememberSaveable { mutableStateOf(true) }
     val effect = LocalSurfaceEffect.current
     val translucency = LocalSurfaceTranslucency.current
@@ -165,6 +178,14 @@ fun NoteDetailScreen(
                             Icon(Icons.Rounded.MoreVert, contentDescription = "更多")
                         }
                         DropdownMenu(expanded = moreMenu, onDismissRequest = { moreMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("文档导航") },
+                                leadingIcon = { Icon(Icons.Outlined.Toc, contentDescription = null) },
+                                onClick = {
+                                    moreMenu = false
+                                    showDocumentOutline = true
+                                },
+                            )
                             DropdownMenuItem(
                                 text = { Text("附件") },
                                 leadingIcon = { Icon(Icons.Outlined.AttachFile, contentDescription = null) },
@@ -249,6 +270,9 @@ fun NoteDetailScreen(
                 note = note,
                 rendered = state.renderedContent,
                 fitToWidth = fitToWidth,
+                navigationTarget = documentNavigationTarget,
+                onHeadingsChanged = { documentHeadings = it },
+                onNavigationHandled = { documentNavigationTarget = null },
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize(),
@@ -259,11 +283,26 @@ fun NoteDetailScreen(
                 imageRepository = imageRepository,
                 account = state.account,
                 fitToWidth = fitToWidth,
+                navigationTarget = documentNavigationTarget,
+                onHeadingsChanged = { documentHeadings = it },
+                onNavigationHandled = { documentNavigationTarget = null },
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize(),
             )
         }
+    }
+
+    if (showDocumentOutline) {
+        DocumentOutlineSheet(
+            headings = documentHeadings,
+            onDismiss = { showDocumentOutline = false },
+            onHeadingClick = { heading ->
+                showDocumentOutline = false
+                if (state.note?.isMarkdown == true && !fitToWidth) fitToWidth = true
+                documentNavigationTarget = heading
+            },
+        )
     }
 
     if (showAttachments) {
@@ -296,18 +335,34 @@ private fun MarkdownDetail(
     note: NoteEntity,
     rendered: String,
     fitToWidth: Boolean,
+    navigationTarget: DocumentHeading?,
+    onHeadingsChanged: (List<DocumentHeading>) -> Unit,
+    onNavigationHandled: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val spacing = LocalUiSpacing.current
+    val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    var headerHeight by remember { mutableStateOf(0) }
     Column(
         modifier = modifier
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(horizontal = spacing.pageHorizontal),
     ) {
-        NoteHeader(note, originalMode = !fitToWidth)
+        NoteHeader(
+            note = note,
+            originalMode = !fitToWidth,
+            modifier = Modifier.onSizeChanged { headerHeight = it.height },
+        )
         if (fitToWidth) {
             MarkdownContent(
                 markdown = rendered,
+                navigationTarget = navigationTarget,
+                onHeadingsChanged = onHeadingsChanged,
+                onNavigate = { offset ->
+                    scope.launch { scrollState.animateScrollTo(headerHeight + offset) }
+                },
+                onNavigationHandled = onNavigationHandled,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = spacing.contentVertical),
@@ -340,6 +395,9 @@ private fun HtmlDetail(
     imageRepository: ImageRepository,
     account: com.leanote.next.data.model.Account?,
     fitToWidth: Boolean,
+    navigationTarget: DocumentHeading?,
+    onHeadingsChanged: (List<DocumentHeading>) -> Unit,
+    onNavigationHandled: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val spacing = LocalUiSpacing.current
@@ -350,6 +408,9 @@ private fun HtmlDetail(
             account = account,
             images = imageRepository,
             fitToWidth = fitToWidth,
+            navigationTarget = navigationTarget,
+            onHeadingsChanged = onHeadingsChanged,
+            onNavigationHandled = onNavigationHandled,
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
@@ -357,11 +418,79 @@ private fun HtmlDetail(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DocumentOutlineSheet(
+    headings: List<DocumentHeading>,
+    onDismiss: () -> Unit,
+    onHeadingClick: (DocumentHeading) -> Unit,
+) {
+    val spacing = LocalUiSpacing.current
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = spacing.pageVertical),
+        ) {
+            Column(Modifier.padding(horizontal = spacing.pageHorizontal)) {
+                Text("文档导航", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    if (headings.isEmpty()) "按标题快速跳转" else "${headings.size} 个标题",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.height(spacing.itemGap))
+            if (headings.isEmpty()) {
+                Text(
+                    "本文没有可导航标题",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(
+                        horizontal = spacing.pageHorizontal,
+                        vertical = spacing.contentVertical * 2,
+                    ),
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 480.dp),
+                    contentPadding = PaddingValues(vertical = spacing.itemGap),
+                ) {
+                    items(headings, key = { it.id }) { heading ->
+                        ListItem(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onHeadingClick(heading) }
+                                .padding(start = ((heading.level - 1).coerceIn(0, 5) * 14).dp),
+                            leadingContent = {
+                                Text(
+                                    "H${heading.level}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            },
+                            headlineContent = {
+                                Text(
+                                    heading.title,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun NoteHeader(note: NoteEntity, originalMode: Boolean = false) {
+private fun NoteHeader(note: NoteEntity, originalMode: Boolean = false, modifier: Modifier = Modifier) {
     val spacing = LocalUiSpacing.current
-    Column(Modifier.padding(top = spacing.inlineGap / 2, bottom = spacing.itemGap)) {
+    Column(modifier.padding(top = spacing.inlineGap / 2, bottom = spacing.itemGap)) {
         Text(
             text = if (note.title.isBlank()) "无标题笔记" else note.title,
             style = MaterialTheme.typography.headlineMedium,

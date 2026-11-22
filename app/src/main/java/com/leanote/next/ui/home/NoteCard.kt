@@ -40,7 +40,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.leanote.next.data.local.NoteEntity
 import com.leanote.next.data.model.Account
 import com.leanote.next.data.model.UiDensity
@@ -82,12 +84,17 @@ fun NoteCard(
             ThumbnailEntryPoint::class.java,
         ).imageRepository()
     }
-    var thumbnails by remember(note.localId) { mutableStateOf<List<Any>>(emptyList()) }
+    val thumbnailGeneration by images.thumbnailGeneration.collectAsStateWithLifecycle()
+    var thumbnails by remember(note.localId, note.accountId, thumbnailGeneration, account?.token) {
+        mutableStateOf(images.peekThumbnailModels(note, account).orEmpty())
+    }
     var thumbIndex by remember(note.localId) { mutableStateOf(0) }
 
-    LaunchedEffect(note.localId, note.content, account?.id) {
-        thumbnails = runCatching { images.thumbnailModels(note.content, account) }
-            .getOrDefault(emptyList())
+    LaunchedEffect(note.localId, note.accountId, thumbnailGeneration, account?.token) {
+        if (images.peekThumbnailModels(note, account) == null) {
+            thumbnails = runCatching { images.thumbnailModels(note, account) }
+                .getOrDefault(emptyList())
+        }
         thumbIndex = 0
     }
 
@@ -126,6 +133,16 @@ fun NoteCard(
         UiDensity.COMFORTABLE -> 62.dp
     }
     val thumbnailModel = thumbnails.getOrNull(thumbIndex)
+    val thumbnailRequest = remember(thumbnailModel, note.accountId, note.localId, thumbnailGeneration) {
+        thumbnailModel?.let { model ->
+            val cacheKey = "${note.accountId}:${note.localId}:$thumbnailGeneration:$model"
+            ImageRequest.Builder(context)
+                .data(model)
+                .memoryCacheKey(cacheKey)
+                .diskCacheKey(cacheKey)
+                .build()
+        }
+    }
 
     Box(modifier) {
         Surface(
@@ -212,7 +229,7 @@ fun NoteCard(
                             if (thumbnailModel != null) {
                                 Spacer(Modifier.height(2.dp))
                                 AsyncImage(
-                                    model = thumbnailModel,
+                                    model = thumbnailRequest,
                                     contentDescription = null,
                                     onError = {
                                         // 图片损坏或地址失效时自动尝试下一张。

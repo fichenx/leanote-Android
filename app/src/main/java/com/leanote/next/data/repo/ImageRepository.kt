@@ -3,13 +3,18 @@ package com.leanote.next.data.repo
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.LruCache
 import android.webkit.MimeTypeMap
 import com.leanote.next.data.local.ImageDao
+import com.leanote.next.data.local.NoteEntity
 import com.leanote.next.data.local.NoteImageEntity
 import com.leanote.next.data.model.Account
 import com.leanote.next.data.remote.ApiClient
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
@@ -29,6 +34,24 @@ class ImageRepository @Inject constructor(
     private val imageDir: File by lazy {
         File(context.filesDir, "note_images").apply { mkdirs() }
     }
+
+    private val thumbnailCache = LruCache<String, List<Any>>(100)
+    private val thumbnailCacheLock = Any()
+    private val _thumbnailGeneration = MutableStateFlow(0L)
+    val thumbnailGeneration: StateFlow<Long> = _thumbnailGeneration.asStateFlow()
+
+    fun peekThumbnailModels(note: NoteEntity, account: Account?): List<Any>? {
+        val key = thumbnailKey(note, account, _thumbnailGeneration.value)
+        return synchronized(thumbnailCacheLock) { thumbnailCache.get(key) }
+    }
+
+    fun invalidateThumbnailCache() {
+        synchronized(thumbnailCacheLock) { thumbnailCache.evictAll() }
+        _thumbnailGeneration.value += 1
+    }
+
+    private fun thumbnailKey(note: NoteEntity, account: Account?, generation: Long): String =
+        "${note.accountId}:${note.localId}:${account?.token.orEmpty()}:$generation"
 
     suspend fun importImage(uri: Uri, noteLocalId: Long): NoteImageEntity? = withContext(Dispatchers.IO) {
         val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
@@ -203,9 +226,14 @@ class ImageRepository @Inject constructor(
      * 本地图片会校验文件存在且非空，远程图片优先使用缓存文件，否则返回带 token 的地址。
      * 调用方在加载失败时可继续尝试下一个候选。
      */
-    suspend fun thumbnailModels(content: String, account: Account?): List<Any> {
+    suspend fun thumbnailModels(note: NoteEntity, account: Account?): List<Any> = withContext(Dispatchers.IO) {
         data class Hit(val index: Int, val kind: Int, val value: String)
 
+        val generation = _thumbnailGeneration.value
+        val key = thumbnailKey(note, account, generation)
+        synchronized(thumbnailCacheLock) { thumbnailCache.get(key) }?.let { return@withContext it }
+
+        val content = note.content
         val hits = mutableListOf<Hit>()
         ImageRefs.localPattern.findAll(content).forEach { hits.add(Hit(it.range.first, 0, it.groupValues[1])) }
         ImageRefs.webLocalPattern.findAll(content).forEach { hits.add(Hit(it.range.first, 0, it.groupValues[1])) }
@@ -230,7 +258,9 @@ class ImageRepository @Inject constructor(
                 hit.kind == 1 && account != null -> models.add(apiClient.imageUrl(account.host, hit.value, account.token))
             }
         }
-        return models.toList()
+        val result = models.toList()
+        synchronized(thumbnailCacheLock) { thumbnailCache.put(key, result) }
+        result
     }
 }
 
