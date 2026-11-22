@@ -61,29 +61,6 @@ data class UpdateResponse(
 )
 
 @Serializable
-data class AttachDto(
-    @SerialName("AttachId") val attachId: String = "",
-    @SerialName("NoteId") val noteId: String = "",
-    @SerialName("Name") val name: String = "",
-    @SerialName("Size") val size: Long = 0L,
-    @SerialName("Type") val type: String = "",
-    @SerialName("Path") val path: String = "",
-    @SerialName("CreatedTime") val createdTime: String? = null,
-)
-
-@Serializable
-data class AttachUploadResponse(
-    @SerialName("Ok") val ok: Boolean = false,
-    @SerialName("Msg") val msg: String? = null,
-    @SerialName("AttachId") val attachId: String = "",
-    @SerialName("Id") val id: String = "",
-    @SerialName("Name") val name: String = "",
-    @SerialName("Size") val size: Long = 0L,
-    @SerialName("Type") val type: String = "",
-    @SerialName("Path") val path: String = "",
-)
-
-@Serializable
 data class NotebookDto(
     @SerialName("Ok") val ok: Boolean = true,
     @SerialName("Msg") val msg: String? = null,

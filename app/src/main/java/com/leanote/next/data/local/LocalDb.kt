@@ -123,6 +123,9 @@ interface NoteDao {
     @Upsert
     suspend fun upsert(note: NoteEntity): Long
 
+    @Query("UPDATE notes SET usn = :usn WHERE localId = :localId")
+    suspend fun updateUsn(localId: Long, usn: Int)
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(note: NoteEntity): Long
 

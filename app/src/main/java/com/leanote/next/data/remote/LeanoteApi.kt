@@ -1,8 +1,6 @@
 package com.leanote.next.data.remote
 
 import com.leanote.next.data.remote.dto.ApiBase
-import com.leanote.next.data.remote.dto.AttachDto
-import com.leanote.next.data.remote.dto.AttachUploadResponse
 import com.leanote.next.data.remote.dto.LoginResponse
 import com.leanote.next.data.remote.dto.LogoResponse
 import com.leanote.next.data.remote.dto.NoteDto
@@ -137,23 +135,13 @@ interface LeanoteApi {
         @Query("token") token: String,
     ): UpdateResponse
 
-    @GET("attach/getAttachs")
-    suspend fun getAttachs(
+    /**
+     * 笔记元数据（不含正文）。Leanote 没有独立的附件列表/上传/删除 API，
+     * 附件通过笔记的 Files 字段读取，并通过 note/updateNote 增删。
+     */
+    @GET("note/getNote")
+    suspend fun noteMeta(
         @Query("noteId") noteId: String,
         @Query("token") token: String,
-    ): List<AttachDto>
-
-    @Multipart
-    @POST("file/uploadAttach")
-    suspend fun uploadAttach(
-        @Part file: MultipartBody.Part,
-        @Query("noteId") noteId: String,
-        @Query("token") token: String,
-    ): AttachUploadResponse
-
-    @GET("attach/deleteAttach")
-    suspend fun deleteAttach(
-        @Query("attachId") attachId: String,
-        @Query("token") token: String,
-    ): UpdateResponse
+    ): NoteDto
 }

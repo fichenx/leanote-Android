@@ -97,7 +97,7 @@ import com.leanote.next.data.model.SurfaceEffect
 import com.leanote.next.ui.theme.LocalSurfaceEffect
 import com.leanote.next.ui.theme.LocalSurfaceTranslucency
 import com.leanote.next.ui.theme.LocalUiSpacing
-import com.leanote.next.ui.theme.NoteListHorizontalInset
+import com.leanote.next.ui.theme.CardHorizontalInset
 import com.leanote.next.ui.theme.barColor
 import com.leanote.next.ui.theme.pageBrush
 import com.leanote.next.data.local.NotebookEntity
@@ -393,7 +393,7 @@ fun HomeScreen(
                 AnimatedVisibility(visible = state.tags.isNotEmpty() && !state.filter.trash) {
                     LazyRow(
                         contentPadding = PaddingValues(
-                            horizontal = NoteListHorizontalInset,
+                            horizontal = CardHorizontalInset,
                             vertical = spacing.itemGap / 2,
                         ),
                         horizontalArrangement = Arrangement.spacedBy(spacing.inlineGap),
@@ -460,8 +460,8 @@ fun HomeScreen(
                         } else {
                             LazyColumn(
                                 contentPadding = PaddingValues(
-                                    start = NoteListHorizontalInset,
-                                    end = NoteListHorizontalInset,
+                                    start = CardHorizontalInset,
+                                    end = CardHorizontalInset,
                                     top = spacing.pageVertical,
                                     bottom = 96.dp,
                                 ),
@@ -809,7 +809,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
         onValueChange = onQueryChange,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = NoteListHorizontalInset, vertical = spacing.itemGap / 2),
+            .padding(horizontal = CardHorizontalInset, vertical = spacing.itemGap / 2),
         placeholder = { Text("搜索标题、正文或标签") },
         leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
         trailingIcon = if (query.isNotEmpty()) {

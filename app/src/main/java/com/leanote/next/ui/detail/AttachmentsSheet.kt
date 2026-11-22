@@ -295,11 +295,16 @@ fun AttachmentsSheet(
                                 )
                             },
                             supportingContent = {
+                                val sizeLabel = if (attachment.size > 0L) {
+                                    formatFileSize(attachment.size)
+                                } else {
+                                    "大小未知"
+                                }
                                 Text(
                                     if (working) {
                                         state.workingLabel ?: "正在处理…"
                                     } else {
-                                        "${formatFileSize(attachment.size)} · ${attachment.mimeType}"
+                                        "$sizeLabel · ${attachment.mimeType}"
                                     },
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,

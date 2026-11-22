@@ -9,17 +9,21 @@ import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
 import com.leanote.next.data.local.AttachmentDao
 import com.leanote.next.data.local.NoteAttachmentEntity
+import com.leanote.next.data.local.NoteDao
 import com.leanote.next.data.local.NoteEntity
 import com.leanote.next.data.model.Account
 import com.leanote.next.data.model.ApiException
 import com.leanote.next.data.remote.ApiClient
-import com.leanote.next.util.TimeUtils
+import com.leanote.next.data.remote.dto.NoteDto
+import com.leanote.next.data.remote.dto.NoteFileDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -30,6 +34,7 @@ import javax.inject.Singleton
 @Singleton
 class AttachmentRepository @Inject constructor(
     private val attachmentDao: AttachmentDao,
+    private val noteDao: NoteDao,
     private val apiClient: ApiClient,
 ) {
 
@@ -37,36 +42,34 @@ class AttachmentRepository @Inject constructor(
 
     suspend fun refresh(account: Account, note: NoteEntity) = withContext(Dispatchers.IO) {
         if (note.serverId.isBlank()) return@withContext
-        val remote = runCatching {
-            apiClient.api(account.host).getAttachs(note.serverId, account.token)
-        }.getOrElse { throw ApiException("获取附件列表失败：${it.message ?: "网络错误"}") }
+        val remote = remoteNote(account, note.serverId, "获取附件列表失败")
+        val remoteAttachments = remote.attachments()
 
         val existing = attachmentDao.listOfNote(note.localId)
         val matched = mutableSetOf<Long>()
-        remote.filter { it.attachId.isNotBlank() }.forEach { dto ->
-            val local = existing.firstOrNull { it.localId !in matched && it.serverId == dto.attachId }
+        remoteAttachments.forEach { dto ->
+            val fileName = dto.title?.takeIf { it.isNotBlank() }
+            val local = existing.firstOrNull { it.localId !in matched && it.serverId == dto.fileId }
                 ?: existing.firstOrNull {
                     it.localId !in matched && it.serverId.isNullOrBlank() &&
-                        it.fileName == dto.name && (dto.size <= 0L || it.size == dto.size)
+                        fileName != null && it.fileName == fileName
                 }
-            val created = TimeUtils.parseServerTime(dto.createdTime).takeIf { it > 0L }
-                ?: local?.createdTime ?: System.currentTimeMillis()
             val entity = NoteAttachmentEntity(
                 localId = local?.localId ?: 0,
                 noteLocalId = note.localId,
                 accountId = account.id,
-                serverId = dto.attachId,
-                fileName = dto.name.ifBlank { local?.fileName ?: "未命名附件" },
-                mimeType = dto.type.ifBlank { local?.mimeType ?: "application/octet-stream" },
-                size = if (dto.size > 0L) dto.size else local?.size ?: 0L,
+                serverId = dto.fileId,
+                fileName = fileName ?: local?.fileName ?: "未命名附件",
+                mimeType = remoteMimeType(dto, local?.mimeType.orEmpty()),
+                size = local?.size ?: 0L,
                 localPath = local?.localPath,
-                createdTime = created,
+                createdTime = local?.createdTime ?: System.currentTimeMillis(),
             )
             val localId = attachmentDao.upsert(entity)
             matched += if (local != null) local.localId else localId
         }
 
-        val remoteIds = remote.map { it.attachId }.filter { it.isNotBlank() }.toSet()
+        val remoteIds = remoteAttachments.map { it.fileId }.toSet()
         existing.filter { local ->
             val serverId = local.serverId
             local.localId !in matched && serverId != null && serverId !in remoteIds
@@ -97,23 +100,34 @@ class AttachmentRepository @Inject constructor(
             throw ApiException("保存附件失败：${error.message ?: "无法读取所选文件"}")
         }
 
-        val response = runCatching {
-            val body = target.asRequestBody(metadata.mimeType.toMediaType())
-            val part = MultipartBody.Part.createFormData("file", metadata.name, body)
-            apiClient.api(account.host).uploadAttach(part, note.serverId, account.token)
-        }.getOrElse {
+        val localFileId = UUID.randomUUID().toString()
+        val response = try {
+            val remote = remoteNote(account, note.serverId, "上传附件失败")
+            updateAttachments(
+                account = account,
+                note = note,
+                remote = remote,
+                retained = remote.attachments(),
+                upload = PendingUpload(localFileId, metadata.name, metadata.mimeType, target),
+                errorLabel = "上传附件失败",
+            )
+        } catch (error: Throwable) {
             target.delete()
-            throw ApiException("上传附件失败：${it.message ?: "网络错误"}")
+            if (error is ApiException) throw error
+            throw ApiException("上传附件失败：${error.message ?: "网络错误"}")
         }
-        if (!response.ok) {
+        val serverId = response.files.firstOrNull {
+            it.localFileId == localFileId && it.fileId.isNotBlank()
+        }?.fileId
+        if (serverId == null) {
             target.delete()
-            throw ApiException(response.msg ?: "上传附件失败")
+            throw ApiException("上传附件失败：服务器未返回文件标识")
         }
 
         val entity = NoteAttachmentEntity(
             noteLocalId = note.localId,
             accountId = account.id,
-            serverId = response.attachId.ifBlank { response.id }.takeIf { it.isNotBlank() },
+            serverId = serverId,
             fileName = metadata.name,
             mimeType = metadata.mimeType,
             size = if (metadata.size >= 0L) metadata.size else target.length(),
@@ -145,14 +159,101 @@ class AttachmentRepository @Inject constructor(
     suspend fun delete(account: Account, attachment: NoteAttachmentEntity) = withContext(Dispatchers.IO) {
         val serverId = attachment.serverId
         if (!serverId.isNullOrBlank()) {
-            val response = runCatching {
-                apiClient.api(account.host).deleteAttach(serverId, account.token)
-            }.getOrElse { throw ApiException("删除附件失败：${it.message ?: "网络错误"}") }
-            if (!response.ok) throw ApiException(response.msg ?: "删除附件失败")
+            val note = noteDao.getById(attachment.noteLocalId)
+                ?: throw ApiException("删除附件失败：找不到所属笔记")
+            if (note.serverId.isBlank()) throw ApiException("请先同步笔记后再删除附件")
+            val remote = remoteNote(account, note.serverId, "删除附件失败")
+            updateAttachments(
+                account = account,
+                note = note,
+                remote = remote,
+                retained = remote.attachments().filter { it.fileId != serverId },
+                upload = null,
+                errorLabel = "删除附件失败",
+            )
         }
         attachmentDao.delete(attachment)
         attachment.localPath?.let { File(it).delete() }
     }
+
+    private suspend fun remoteNote(account: Account, noteId: String, errorLabel: String): NoteDto {
+        val remote = runCatching {
+            apiClient.api(account.host).noteMeta(noteId, account.token)
+        }.getOrElse { throw ApiException("$errorLabel：${it.message ?: "网络错误"}") }
+        if (!remote.ok) {
+            throw ApiException(remote.msg?.takeIf { it.isNotBlank() } ?: errorLabel)
+        }
+        return remote
+    }
+
+    private suspend fun updateAttachments(
+        account: Account,
+        note: NoteEntity,
+        remote: NoteDto,
+        retained: List<NoteFileDto>,
+        upload: PendingUpload?,
+        errorLabel: String,
+    ): NoteDto {
+        val fields = LinkedHashMap<String, RequestBody>()
+        val parts = mutableListOf<MultipartBody.Part>()
+        fields["NoteId"] = note.serverId.toPart()
+        fields["Usn"] = remote.usn.toString().toPart()
+        // UpdateNote 只改附件时会返回失败，回传服务器标题以完成有效更新并获取新 USN。
+        fields["Title"] = remote.title.toPart()
+
+        retained.forEachIndexed { index, file ->
+            fields["Files[$index][LocalFileId]"] = "".toPart()
+            fields["Files[$index][FileId]"] = file.fileId.toPart()
+            fields["Files[$index][IsAttach]"] = "1".toPart()
+            fields["Files[$index][HasBody]"] = "0".toPart()
+            fields["Files[$index][Title]"] = file.title.orEmpty().toPart()
+            fields["Files[$index][Type]"] = file.type.orEmpty().toPart()
+        }
+
+        if (upload != null) {
+            val index = retained.size
+            fields["Files[$index][LocalFileId]"] = upload.localFileId.toPart()
+            fields["Files[$index][FileId]"] = "".toPart()
+            fields["Files[$index][IsAttach]"] = "1".toPart()
+            fields["Files[$index][HasBody]"] = "1".toPart()
+            fields["Files[$index][Title]"] = upload.fileName.toPart()
+            fields["Files[$index][Type]"] = upload.fileName.substringAfterLast('.', "").toPart()
+            val body = upload.file.asRequestBody(upload.mimeType.toMediaType())
+            parts += MultipartBody.Part.createFormData(
+                "FileDatas[${upload.localFileId}]",
+                upload.fileName,
+                body,
+            )
+        }
+
+        val response = runCatching {
+            apiClient.api(account.host).updateNote(fields, parts, account.token)
+        }.getOrElse { throw ApiException("$errorLabel：${it.message ?: "网络错误"}") }
+        if (!response.ok) {
+            throw ApiException(response.msg?.takeIf { it.isNotBlank() } ?: errorLabel)
+        }
+        if (response.usn > 0) noteDao.updateUsn(note.localId, response.usn)
+        return response
+    }
+
+    private fun NoteDto.attachments(): List<NoteFileDto> =
+        files.filter { it.isAttach && it.fileId.isNotBlank() }
+
+    private fun remoteMimeType(file: NoteFileDto, fallback: String): String {
+        val serverType = file.type?.trim()?.trimStart('.')?.lowercase().orEmpty()
+        val fromType = if (serverType.contains('/')) {
+            serverType
+        } else {
+            MimeTypeMap.getSingleton().getMimeTypeFromExtension(serverType)
+        }
+        val extension = file.title?.substringAfterLast('.', "")?.lowercase().orEmpty()
+        return fromType
+            ?: MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+            ?: fallback.takeIf { it.isNotBlank() }
+            ?: "application/octet-stream"
+    }
+
+    private fun String.toPart(): RequestBody = toRequestBody("text/plain".toMediaType())
 
     private suspend fun ensureLocalFile(
         context: Context,
@@ -236,6 +337,13 @@ class AttachmentRepository @Inject constructor(
 
     private fun safeFileName(name: String): String =
         name.replace(Regex("[\\\\/:*?\"<>|]"), "_").ifBlank { "attachment" }.take(120)
+
+    private data class PendingUpload(
+        val localFileId: String,
+        val fileName: String,
+        val mimeType: String,
+        val file: File,
+    )
 
     private data class SelectedFile(
         val name: String,

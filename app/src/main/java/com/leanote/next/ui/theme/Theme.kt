@@ -85,8 +85,8 @@ private fun spacingFor(density: UiDensity): UiSpacing = when (density) {
     UiDensity.COMFORTABLE -> UiSpacing(18.dp, 14.dp, 20.dp, 14.dp, 16.dp, 20.dp, 12.dp, 10.dp)
 }
 
-/** 笔记列表卡片宽度基准：所有紧凑度下都保持紧凑档的左右留白。 */
-val NoteListHorizontalInset: Dp = 10.dp
+/** 卡片列表左右留白：所有紧凑度下都保持紧凑档宽度，卡片宽度不随紧凑度变化。 */
+val CardHorizontalInset: Dp = 10.dp
 
 data class ColorRole(
     val key: String,

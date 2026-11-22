@@ -127,10 +127,12 @@ class NoteRepository @Inject constructor(
         if (note.notebookServerId.isBlank()) return@withContext PushResult.SKIPPED
         val api = apiClient.api(account.host)
         val isNew = note.serverId.isBlank()
+        var retainedAttachments = emptyList<NoteFileDto>()
 
         if (!isNew) {
-            val remote = runCatching { api.noteAndContent(note.serverId, account.token) }.getOrNull()
-            if (remote != null && remote.ok && remote.usn != note.usn) {
+            val remote = runCatching { api.noteAndContent(note.serverId, account.token) }
+                .getOrElse { throw ApiException("同步失败：${it.message ?: "网络错误"}") }
+            if (remote.ok && remote.usn != note.usn) {
                 // 服务器已有更新：本地版本另存为冲突副本，再用服务器版本覆盖当前记录。
                 val now = System.currentTimeMillis()
                 noteDao.insert(
@@ -147,6 +149,7 @@ class NoteRepository @Inject constructor(
                 noteDao.upsert(remote.toEntity(account.id, note.localId))
                 return@withContext PushResult.CONFLICT
             }
+            retainedAttachments = remote.files.filter { it.isAttach && it.fileId.isNotBlank() }
         }
 
         val fields = LinkedHashMap<String, RequestBody>()
@@ -180,9 +183,20 @@ class NoteRepository @Inject constructor(
             fields["Usn"] = note.usn.toString().toPart()
         }
 
-        pending.forEachIndexed { index, image ->
+        // UpdateNote 会按 Files 清理附件，保存正文时必须同时回传服务器现有附件。
+        retainedAttachments.forEachIndexed { index, attachment ->
+            fields["Files[$index][LocalFileId]"] = "".toPart()
+            fields["Files[$index][FileId]"] = attachment.fileId.toPart()
+            fields["Files[$index][IsAttach]"] = "1".toPart()
+            fields["Files[$index][HasBody]"] = "0".toPart()
+            fields["Files[$index][Title]"] = attachment.title.orEmpty().toPart()
+            fields["Files[$index][Type]"] = attachment.type.orEmpty().toPart()
+        }
+
+        pending.forEachIndexed { pendingIndex, image ->
             val file = File(image.localPath)
             if (!file.isFile) return@forEachIndexed
+            val index = retainedAttachments.size + pendingIndex
             fields["Files[$index][LocalFileId]"] = image.localId.toPart()
             fields["Files[$index][IsAttach]"] = "0".toPart()
             fields["Files[$index][FileId]"] = "".toPart()

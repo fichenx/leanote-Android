@@ -75,6 +75,7 @@ import com.leanote.next.data.model.UiDensity
 import com.leanote.next.ui.components.AccountAvatar
 import com.leanote.next.ui.components.ConfirmDialog
 import com.leanote.next.ui.components.LeanoteTopAppBar
+import com.leanote.next.ui.theme.CardHorizontalInset
 import com.leanote.next.ui.theme.LocalCardCorner
 import com.leanote.next.ui.theme.LocalSurfaceEffect
 import com.leanote.next.ui.theme.LocalSurfaceTranslucency
@@ -140,7 +141,7 @@ fun SettingsScreen(
                 .padding(padding)
                 .fillMaxSize(),
             contentPadding = PaddingValues(
-                horizontal = spacing.pageHorizontal,
+                horizontal = CardHorizontalInset,
                 vertical = spacing.pageVertical,
             ),
             verticalArrangement = Arrangement.spacedBy(spacing.itemGap),
