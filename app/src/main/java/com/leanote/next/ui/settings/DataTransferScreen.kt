@@ -2,7 +2,6 @@ package com.leanote.next.ui.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -18,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material3.Button
@@ -47,8 +47,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.leanote.next.data.transfer.ExportFormat
 import com.leanote.next.ui.components.LeanoteTopAppBar
+import com.leanote.next.ui.theme.LocalCardCorner
 import com.leanote.next.ui.theme.LocalUiSpacing
-import com.leanote.next.ui.theme.LocalUiStyleTokens
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -238,14 +238,10 @@ fun DataTransferScreen(
 @Composable
 private fun TransferCard(content: @Composable ColumnScope.() -> Unit) {
     val spacing = LocalUiSpacing.current
-    val styleTokens = LocalUiStyleTokens.current
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        shape = MaterialTheme.shapes.large,
-        shadowElevation = styleTokens.cardShadowElevation,
-        border = styleTokens.cardBorderWidth.takeIf { it > 0.dp }?.let {
-            BorderStroke(it, MaterialTheme.colorScheme.outlineVariant)
-        },
+        shape = RoundedCornerShape(LocalCardCorner.current.dp),
+        shadowElevation = 1.dp,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(

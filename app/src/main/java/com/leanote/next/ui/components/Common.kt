@@ -20,7 +20,6 @@ import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -50,7 +49,6 @@ import coil.request.ImageRequest
 import com.leanote.next.data.local.NoteEntity
 import com.leanote.next.data.model.Account
 import com.leanote.next.ui.theme.LocalUiSpacing
-import com.leanote.next.ui.theme.LocalUiStyleTokens
 import com.leanote.next.util.HtmlUtils
 import com.leanote.next.util.TimeUtils
 
@@ -72,7 +70,7 @@ fun LeanoteMark(modifier: Modifier = Modifier, tint: Color = MaterialTheme.color
     }
 }
 
-/** Cupertino 使用居中标题，其余风格保留起始对齐。 */
+/** 统一的 Material 3 顶栏。 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LeanoteTopAppBar(
@@ -82,23 +80,13 @@ fun LeanoteTopAppBar(
     actions: @Composable RowScope.() -> Unit = {},
     colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
 ) {
-    if (LocalUiStyleTokens.current.centerTopBarTitle) {
-        CenterAlignedTopAppBar(
-            title = title,
-            modifier = modifier,
-            navigationIcon = navigationIcon,
-            actions = actions,
-            colors = colors,
-        )
-    } else {
-        TopAppBar(
-            title = title,
-            modifier = modifier,
-            navigationIcon = navigationIcon,
-            actions = actions,
-            colors = colors,
-        )
-    }
+    TopAppBar(
+        title = title,
+        modifier = modifier,
+        navigationIcon = navigationIcon,
+        actions = actions,
+        colors = colors,
+    )
 }
 
 @Composable
@@ -272,7 +260,7 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier, trailing: (@Compo
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
+            .heightIn(min = 40.dp)
             .padding(horizontal = spacing.pageHorizontal, vertical = spacing.itemGap / 2),
         verticalAlignment = Alignment.CenterVertically,
     ) {

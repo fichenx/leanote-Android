@@ -3,7 +3,6 @@ package com.leanote.next.ui.settings
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Logout
@@ -72,15 +72,13 @@ import com.leanote.next.data.model.SurfaceEffect
 import com.leanote.next.data.model.ThemeMode
 import com.leanote.next.data.model.ThemePalette
 import com.leanote.next.data.model.UiDensity
-import com.leanote.next.data.model.UiStyle
 import com.leanote.next.ui.components.AccountAvatar
 import com.leanote.next.ui.components.ConfirmDialog
 import com.leanote.next.ui.components.LeanoteTopAppBar
+import com.leanote.next.ui.theme.LocalCardCorner
 import com.leanote.next.ui.theme.LocalSurfaceEffect
 import com.leanote.next.ui.theme.LocalSurfaceTranslucency
 import com.leanote.next.ui.theme.LocalUiSpacing
-import com.leanote.next.ui.theme.LocalUiStyle
-import com.leanote.next.ui.theme.LocalUiStyleTokens
 import com.leanote.next.ui.theme.cardColor
 import com.leanote.next.ui.theme.pageBrush
 import kotlin.math.roundToInt
@@ -176,19 +174,6 @@ fun SettingsScreen(
                         onSelect = viewModel::setThemeMode,
                     )
                     Spacer(Modifier.height(spacing.contentVertical))
-                    SettingLabel("界面风格", "选择应用整体的控件、圆角与导航视觉风格")
-                    Spacer(Modifier.height(spacing.itemGap))
-                    SettingChoiceChips(
-                        options = listOf(
-                            UiStyle.MATERIAL to "Material",
-                            UiStyle.MIUIX to "Miuix",
-                            UiStyle.CUPERTINO to "Cupertino",
-                            UiStyle.FLUENT to "Fluent",
-                        ),
-                        selected = settings.uiStyle,
-                        onSelect = viewModel::setUiStyle,
-                    )
-                    Spacer(Modifier.height(spacing.contentVertical))
                     SettingLabel("配色方案", "深色模式使用柔和的深灰背景，不再是纯黑")
                     Spacer(Modifier.height(spacing.itemGap))
                     ThemePaletteChips(
@@ -222,7 +207,7 @@ fun SettingsScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 48.dp),
+                                .heightIn(min = 40.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text("透明强度", style = MaterialTheme.typography.bodyLarge)
@@ -249,7 +234,7 @@ fun SettingsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 48.dp),
+                            .heightIn(min = 40.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
@@ -284,11 +269,11 @@ fun SettingsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 48.dp),
+                            .heightIn(min = 40.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            SettingLabel("笔记卡片圆角", "独立调整笔记列表中的卡片圆角，不影响其他页面卡片")
+                            SettingLabel("卡片圆角", "统一调整笔记卡片与各页面卡片的圆角")
                         }
                         Spacer(Modifier.width(spacing.itemGap))
                         Text(
@@ -357,7 +342,7 @@ fun SettingsScreen(
                         onClick = onOpenDataTransfer,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 48.dp),
+                            .heightIn(min = 40.dp),
                     ) {
                         Text("打开数据管理")
                     }
@@ -391,7 +376,7 @@ fun SettingsScreen(
                         onClick = { confirmLogout = true },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 48.dp),
+                            .heightIn(min = 40.dp),
                     ) {
                         Icon(Icons.Rounded.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(spacing.inlineGap))
@@ -434,11 +419,7 @@ private fun <T> SettingChoiceChips(
             AssistChip(
                 onClick = { onSelect(value) },
                 label = { Text(label) },
-                shape = when (LocalUiStyle.current) {
-                    UiStyle.MATERIAL, UiStyle.MIUIX -> CircleShape
-                    UiStyle.CUPERTINO -> MaterialTheme.shapes.small
-                    UiStyle.FLUENT -> MaterialTheme.shapes.extraSmall
-                },
+                shape = CircleShape,
                 border = null,
                 colors = AssistChipDefaults.assistChipColors(
                     containerColor = if (selected == value) {
@@ -447,7 +428,7 @@ private fun <T> SettingChoiceChips(
                         MaterialTheme.colorScheme.surfaceContainerHigh
                     },
                 ),
-                modifier = Modifier.heightIn(min = 48.dp),
+                modifier = Modifier.heightIn(min = 40.dp),
             )
         }
     }
@@ -495,7 +476,7 @@ private fun ThemePaletteChips(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .heightIn(min = 48.dp)
+                            .heightIn(min = 40.dp)
                             .clip(CircleShape)
                             .clickable(enabled = enabled) { onSelect(palette) },
                     ) {
@@ -538,7 +519,7 @@ private fun AccountCard(
     val spacing = LocalUiSpacing.current
     Surface(
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
-        shape = MaterialTheme.shapes.large,
+        shape = RoundedCornerShape(LocalCardCorner.current.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -602,7 +583,7 @@ private fun AccountCard(
             OutlinedButton(
                 onClick = onSync,
                 enabled = !syncing,
-                modifier = Modifier.heightIn(min = 48.dp),
+                modifier = Modifier.heightIn(min = 40.dp),
                 contentPadding = PaddingValues(
                     horizontal = spacing.itemGap,
                     vertical = spacing.inlineGap,
@@ -624,20 +605,15 @@ private fun AccountCard(
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     val effect = LocalSurfaceEffect.current
     val spacing = LocalUiSpacing.current
-    val styleTokens = LocalUiStyleTokens.current
+    val shape = RoundedCornerShape(LocalCardCorner.current.dp)
     Surface(
         color = effect.cardColor(
             MaterialTheme.colorScheme,
             MaterialTheme.colorScheme.surfaceContainerLow,
             LocalSurfaceTranslucency.current,
         ),
-        shape = MaterialTheme.shapes.large,
-        border = if (styleTokens.cardBorderWidth > 0.dp) {
-            BorderStroke(styleTokens.cardBorderWidth, MaterialTheme.colorScheme.outlineVariant)
-        } else {
-            null
-        },
-        shadowElevation = styleTokens.cardShadowElevation,
+        shape = shape,
+        shadowElevation = 1.dp,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
@@ -688,7 +664,7 @@ private fun ToggleRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
+            .heightIn(min = 40.dp)
             .clickable { onCheckedChange(!checked) },
         verticalAlignment = Alignment.CenterVertically,
     ) {

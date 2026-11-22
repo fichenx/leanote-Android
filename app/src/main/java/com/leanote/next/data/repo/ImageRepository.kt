@@ -199,25 +199,38 @@ class ImageRepository @Inject constructor(
     }.getOrNull()
 
     /**
-     * 笔记列表缩略图：取正文中最早出现的一张图片，返回 Coil 可加载的模型（本地文件或远程地址）。
+     * 笔记列表缩略图候选：按正文出现顺序返回可加载的图片。
+     * 本地图片会校验文件存在且非空，远程图片优先使用缓存文件，否则返回带 token 的地址。
+     * 调用方在加载失败时可继续尝试下一个候选。
      */
-    suspend fun thumbnailModel(content: String, account: Account?): Any? {
+    suspend fun thumbnailModels(content: String, account: Account?): List<Any> {
         data class Hit(val index: Int, val kind: Int, val value: String)
 
-        val hits = listOfNotNull(
-            ImageRefs.localPattern.find(content)?.let { Hit(it.range.first, 0, it.groupValues[1]) },
-            ImageRefs.webLocalPattern.find(content)?.let { Hit(it.range.first, 0, it.groupValues[1]) },
-            ImageRefs.webServerPattern.find(content)?.let { Hit(it.range.first, 1, it.groupValues[1]) },
-            ImageRefs.remotePattern.find(content)?.let { Hit(it.range.first, 1, it.groupValues[2]) },
-            ImageRefs.genericImagePattern.find(content)?.let { Hit(it.range.first, 2, it.value) },
-        )
-        val hit = hits.minByOrNull { it.index } ?: return null
-        return when (hit.kind) {
-            0 -> imageDao.getByLocalId(hit.value)?.let { File(it.localPath) }?.takeIf { it.isFile }
-            1 -> imageDao.getByServerId(hit.value)?.let { File(it.localPath) }?.takeIf { it.isFile }
-                ?: account?.let { apiClient.imageUrl(it.host, hit.value, it.token) }
-            else -> hit.value
+        val hits = mutableListOf<Hit>()
+        ImageRefs.localPattern.findAll(content).forEach { hits.add(Hit(it.range.first, 0, it.groupValues[1])) }
+        ImageRefs.webLocalPattern.findAll(content).forEach { hits.add(Hit(it.range.first, 0, it.groupValues[1])) }
+        ImageRefs.webServerPattern.findAll(content).forEach { hits.add(Hit(it.range.first, 1, it.groupValues[1])) }
+        ImageRefs.remotePattern.findAll(content).forEach { hits.add(Hit(it.range.first, 1, it.groupValues[2])) }
+        ImageRefs.genericImagePattern.findAll(content).forEach { hits.add(Hit(it.range.first, 2, it.value)) }
+
+        val models = LinkedHashSet<Any>()
+        val seen = HashSet<String>()
+        hits.sortedBy { it.index }.forEach { hit ->
+            if (hit.kind == 2) {
+                models.add(hit.value)
+                return@forEach
+            }
+            if (!seen.add("${hit.kind}:${hit.value}")) return@forEach
+            val file = when (hit.kind) {
+                0 -> imageDao.getByLocalId(hit.value)?.localPath
+                else -> imageDao.getByServerId(hit.value)?.localPath
+            }?.let(::File)?.takeIf { it.isFile && it.length() > 0 }
+            when {
+                file != null -> models.add(file)
+                hit.kind == 1 && account != null -> models.add(apiClient.imageUrl(account.host, hit.value, account.token))
+            }
         }
+        return models.toList()
     }
 }
 

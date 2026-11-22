@@ -28,7 +28,6 @@ import com.leanote.next.data.model.AppSettings
 import com.leanote.next.data.model.SurfaceEffect
 import com.leanote.next.data.model.ThemeMode
 import com.leanote.next.data.model.UiDensity
-import com.leanote.next.data.model.UiStyle
 
 val ReadingFont: FontFamily = FontFamily.Serif
 val MonoFont: FontFamily = FontFamily.Monospace
@@ -56,82 +55,6 @@ val LeanoteShapes = Shapes(
     extraLarge = RoundedCornerShape(28.dp),
 )
 
-private fun shapesFor(style: UiStyle): Shapes = when (style) {
-    UiStyle.MATERIAL -> LeanoteShapes
-    UiStyle.MIUIX -> Shapes(
-        extraSmall = RoundedCornerShape(10.dp),
-        small = RoundedCornerShape(16.dp),
-        medium = RoundedCornerShape(20.dp),
-        large = RoundedCornerShape(26.dp),
-        extraLarge = RoundedCornerShape(32.dp),
-    )
-    UiStyle.CUPERTINO -> Shapes(
-        extraSmall = RoundedCornerShape(6.dp),
-        small = RoundedCornerShape(10.dp),
-        medium = RoundedCornerShape(12.dp),
-        large = RoundedCornerShape(16.dp),
-        extraLarge = RoundedCornerShape(20.dp),
-    )
-    UiStyle.FLUENT -> Shapes(
-        extraSmall = RoundedCornerShape(2.dp),
-        small = RoundedCornerShape(4.dp),
-        medium = RoundedCornerShape(6.dp),
-        large = RoundedCornerShape(8.dp),
-        extraLarge = RoundedCornerShape(10.dp),
-    )
-}
-
-private fun typographyFor(style: UiStyle): Typography = when (style) {
-    UiStyle.MATERIAL -> LeanoteTypography
-    UiStyle.MIUIX -> LeanoteTypography.copy(
-        headlineLarge = LeanoteTypography.headlineLarge.copy(fontSize = 34.sp, fontWeight = FontWeight.Bold),
-        headlineMedium = LeanoteTypography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-        titleLarge = LeanoteTypography.titleLarge.copy(fontSize = 24.sp, fontWeight = FontWeight.Bold),
-        titleMedium = LeanoteTypography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-        labelLarge = LeanoteTypography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-    )
-    UiStyle.CUPERTINO -> LeanoteTypography.copy(
-        headlineLarge = LeanoteTypography.headlineLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.sp),
-        titleLarge = LeanoteTypography.titleLarge.copy(fontSize = 20.sp, fontWeight = FontWeight.SemiBold),
-        titleMedium = LeanoteTypography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-        bodyLarge = LeanoteTypography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 25.sp, letterSpacing = 0.sp),
-        bodyMedium = LeanoteTypography.bodyMedium.copy(letterSpacing = 0.sp),
-        labelLarge = LeanoteTypography.labelLarge.copy(fontWeight = FontWeight.Normal),
-    )
-    UiStyle.FLUENT -> LeanoteTypography.copy(
-        displayLarge = LeanoteTypography.displayLarge.copy(letterSpacing = 0.sp),
-        headlineLarge = LeanoteTypography.headlineLarge.copy(letterSpacing = 0.sp),
-        titleLarge = LeanoteTypography.titleLarge.copy(fontSize = 20.sp, letterSpacing = 0.sp),
-        titleMedium = LeanoteTypography.titleMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
-        bodyLarge = TextStyle(fontSize = 15.sp, lineHeight = 24.sp, fontFamily = FontFamily.SansSerif),
-        bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 21.sp, fontFamily = FontFamily.SansSerif),
-        labelLarge = TextStyle(fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold),
-    )
-}
-
-/** 各界面风格在共享组件上的结构差异。 */
-@Immutable
-data class UiStyleTokens(
-    val cardBorderWidth: Dp,
-    val cardShadowElevation: Dp,
-    val navigationLeadingIndicator: Boolean,
-    val centerTopBarTitle: Boolean,
-)
-
-private val MaterialStyleTokens = UiStyleTokens(
-    cardBorderWidth = 0.dp,
-    cardShadowElevation = 1.dp,
-    navigationLeadingIndicator = false,
-    centerTopBarTitle = false,
-)
-
-private fun styleTokensFor(style: UiStyle): UiStyleTokens = when (style) {
-    UiStyle.MATERIAL -> MaterialStyleTokens
-    UiStyle.MIUIX -> UiStyleTokens(0.dp, 0.dp, false, false)
-    UiStyle.CUPERTINO -> UiStyleTokens(0.5.dp, 0.dp, false, true)
-    UiStyle.FLUENT -> UiStyleTokens(1.dp, 0.dp, true, false)
-}
-
 /** 应用内结构性间距；字体和图标尺寸由全局缩放单独控制。 */
 @Immutable
 data class UiSpacing(
@@ -146,21 +69,24 @@ data class UiSpacing(
 )
 
 private val StandardSpacing = UiSpacing(
-    pageHorizontal = 16.dp,
-    pageVertical = 12.dp,
-    cardHorizontal = 18.dp,
-    cardVertical = 12.dp,
-    contentVertical = 16.dp,
-    sectionGap = 18.dp,
-    itemGap = 10.dp,
-    inlineGap = 8.dp,
+    pageHorizontal = 14.dp,
+    pageVertical = 10.dp,
+    cardHorizontal = 16.dp,
+    cardVertical = 10.dp,
+    contentVertical = 12.dp,
+    sectionGap = 14.dp,
+    itemGap = 8.dp,
+    inlineGap = 6.dp,
 )
 
 private fun spacingFor(density: UiDensity): UiSpacing = when (density) {
-    UiDensity.COMPACT -> UiSpacing(12.dp, 8.dp, 14.dp, 8.dp, 12.dp, 12.dp, 6.dp, 6.dp)
+    UiDensity.COMPACT -> UiSpacing(10.dp, 6.dp, 12.dp, 7.dp, 8.dp, 10.dp, 5.dp, 4.dp)
     UiDensity.STANDARD -> StandardSpacing
-    UiDensity.COMFORTABLE -> UiSpacing(20.dp, 16.dp, 22.dp, 16.dp, 20.dp, 24.dp, 14.dp, 12.dp)
+    UiDensity.COMFORTABLE -> UiSpacing(18.dp, 14.dp, 20.dp, 14.dp, 16.dp, 20.dp, 12.dp, 10.dp)
 }
+
+/** 笔记列表卡片宽度基准：所有紧凑度下都保持紧凑档的左右留白。 */
+val NoteListHorizontalInset: Dp = 10.dp
 
 data class ColorRole(
     val key: String,
@@ -287,15 +213,13 @@ fun LeanoteTheme(settings: AppSettings, content: @Composable () -> Unit) {
         LocalSurfaceTranslucency provides settings.surfaceTranslucency,
         LocalUiDensity provides settings.density,
         LocalUiSpacing provides spacingFor(settings.density),
-        LocalUiStyle provides settings.uiStyle,
-        LocalUiStyleTokens provides styleTokensFor(settings.uiStyle),
-        LocalNoteCardCorner provides settings.noteCardCorner.coerceIn(0, 28),
+        LocalCardCorner provides settings.noteCardCorner.coerceIn(0, 28),
         LocalNoteCardBorder provides settings.noteCardBorder,
     ) {
         MaterialTheme(
             colorScheme = baseScheme.withCustomColors(settings.customColors),
-            typography = typographyFor(settings.uiStyle),
-            shapes = shapesFor(settings.uiStyle),
+            typography = LeanoteTypography,
+            shapes = LeanoteShapes,
             content = content,
         )
     }
@@ -316,11 +240,8 @@ val LocalUiDensity = staticCompositionLocalOf { UiDensity.STANDARD }
 /** 当前应用内语义化间距。 */
 val LocalUiSpacing = staticCompositionLocalOf { StandardSpacing }
 
-val LocalUiStyle = staticCompositionLocalOf { UiStyle.MATERIAL }
-val LocalUiStyleTokens = staticCompositionLocalOf { MaterialStyleTokens }
-
-/** 笔记卡片独立圆角（dp），由主题统一提供。 */
-val LocalNoteCardCorner = staticCompositionLocalOf { 22 }
+/** 卡片圆角（dp），全局作用于笔记卡片与各页面卡片。 */
+val LocalCardCorner = staticCompositionLocalOf { 22 }
 
 /** 笔记卡片是否显示边框，由主题统一提供。 */
 val LocalNoteCardBorder = staticCompositionLocalOf { true }

@@ -97,12 +97,11 @@ import com.leanote.next.data.model.SurfaceEffect
 import com.leanote.next.ui.theme.LocalSurfaceEffect
 import com.leanote.next.ui.theme.LocalSurfaceTranslucency
 import com.leanote.next.ui.theme.LocalUiSpacing
-import com.leanote.next.ui.theme.LocalUiStyle
+import com.leanote.next.ui.theme.NoteListHorizontalInset
 import com.leanote.next.ui.theme.barColor
 import com.leanote.next.ui.theme.pageBrush
 import com.leanote.next.data.local.NotebookEntity
 import com.leanote.next.data.model.SortMode
-import com.leanote.next.data.model.UiStyle
 import com.leanote.next.ui.components.AccountAvatar
 import com.leanote.next.ui.components.ConfirmDialog
 import com.leanote.next.ui.components.EmptyState
@@ -394,7 +393,7 @@ fun HomeScreen(
                 AnimatedVisibility(visible = state.tags.isNotEmpty() && !state.filter.trash) {
                     LazyRow(
                         contentPadding = PaddingValues(
-                            horizontal = spacing.pageHorizontal,
+                            horizontal = NoteListHorizontalInset,
                             vertical = spacing.itemGap / 2,
                         ),
                         horizontalArrangement = Arrangement.spacedBy(spacing.inlineGap),
@@ -461,8 +460,8 @@ fun HomeScreen(
                         } else {
                             LazyColumn(
                                 contentPadding = PaddingValues(
-                                    start = spacing.pageHorizontal,
-                                    end = spacing.pageHorizontal,
+                                    start = NoteListHorizontalInset,
+                                    end = NoteListHorizontalInset,
                                     top = spacing.pageVertical,
                                     bottom = 96.dp,
                                 ),
@@ -810,7 +809,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
         onValueChange = onQueryChange,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = spacing.pageHorizontal, vertical = spacing.itemGap / 2),
+            .padding(horizontal = NoteListHorizontalInset, vertical = spacing.itemGap / 2),
         placeholder = { Text("搜索标题、正文或标签") },
         leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
         trailingIcon = if (query.isNotEmpty()) {
@@ -821,10 +820,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
             }
         } else null,
         singleLine = true,
-        shape = when (LocalUiStyle.current) {
-            UiStyle.MATERIAL, UiStyle.MIUIX -> CircleShape
-            else -> MaterialTheme.shapes.large
-        },
+        shape = CircleShape,
         colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,

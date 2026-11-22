@@ -36,30 +36,32 @@ import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.leanote.next.BuildConfig
 import com.leanote.next.data.local.NotebookEntity
 import com.leanote.next.data.model.Account
-import com.leanote.next.data.model.UiStyle
+import com.leanote.next.data.model.UiDensity
 import com.leanote.next.ui.components.AccountAvatar
 import com.leanote.next.ui.components.SectionHeader
+import com.leanote.next.ui.theme.LocalUiDensity
 import com.leanote.next.ui.theme.LocalUiSpacing
-import com.leanote.next.ui.theme.LocalUiStyle
-import com.leanote.next.ui.theme.LocalUiStyleTokens
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -81,8 +83,7 @@ fun HomeDrawerContent(
     onSettings: () -> Unit,
 ) {
     val spacing = LocalUiSpacing.current
-    val style = LocalUiStyle.current
-    val styleTokens = LocalUiStyleTokens.current
+    val rowMinHeight = drawerRowHeight()
 
     Column(
         modifier = Modifier
@@ -116,7 +117,7 @@ fun HomeDrawerContent(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (account != null) {
-                    AccountAvatar(account, size = 54.dp)
+                    AccountAvatar(account, size = 46.dp)
                     Spacer(Modifier.width(spacing.itemGap))
                     Column(Modifier.weight(1f)) {
                         Text(
@@ -234,7 +235,7 @@ fun HomeDrawerContent(
                         label = { Text(tag, style = MaterialTheme.typography.labelMedium) },
                         shape = MaterialTheme.shapes.extraLarge,
                         border = BorderStroke(
-                            width = styleTokens.cardBorderWidth.takeIf { it > 0.dp } ?: 1.dp,
+                            width = 1.dp,
                             color = if (active) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.outlineVariant,
                         ),
@@ -252,16 +253,16 @@ fun HomeDrawerContent(
         Spacer(Modifier.height(spacing.sectionGap))
         HorizontalDivider(
             modifier = Modifier.padding(horizontal = spacing.pageHorizontal),
-            thickness = if (style == UiStyle.CUPERTINO) styleTokens.cardBorderWidth else 1.dp,
+            thickness = 1.dp,
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
         )
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 48.dp)
+                .heightIn(min = rowMinHeight)
                 .clickable(onClick = onSettings)
-                .padding(horizontal = spacing.pageHorizontal, vertical = spacing.contentVertical),
+                .padding(horizontal = spacing.pageHorizontal, vertical = spacing.itemGap / 2),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -283,6 +284,13 @@ fun HomeDrawerContent(
 }
 
 @Composable
+private fun drawerRowHeight(): Dp = when (LocalUiDensity.current) {
+    UiDensity.COMPACT -> 34.dp
+    UiDensity.STANDARD -> 40.dp
+    UiDensity.COMFORTABLE -> 46.dp
+}
+
+@Composable
 private fun DrawerNavigationItem(
     label: @Composable () -> Unit,
     icon: @Composable () -> Unit,
@@ -290,58 +298,37 @@ private fun DrawerNavigationItem(
     onClick: () -> Unit,
 ) {
     val spacing = LocalUiSpacing.current
-    val style = LocalUiStyle.current
-    val styleTokens = LocalUiStyleTokens.current
+    val rowMinHeight = drawerRowHeight()
     val shape = MaterialTheme.shapes.medium
+    val contentColor = if (selected) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = spacing.pageHorizontal, vertical = spacing.itemGap / 4),
-    ) {
-        NavigationDrawerItem(
-            label = label,
-            icon = icon,
-            selected = selected,
-            onClick = onClick,
+    CompositionLocalProvider(LocalContentColor provides contentColor) {
+        Surface(
+            color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f) else Color.Transparent,
+            shape = shape,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 48.dp)
-                .then(
-                    if (style == UiStyle.FLUENT && styleTokens.cardBorderWidth > 0.dp) {
-                        Modifier.border(
-                            width = styleTokens.cardBorderWidth,
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                            shape = shape,
-                        )
-                    } else {
-                        Modifier
-                    },
-                ),
-            shape = shape,
-            colors = NavigationDrawerItemDefaults.colors(
-                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-            ),
-        )
-        if (selected && styleTokens.navigationLeadingIndicator) {
-            NavigationLeadingIndicator(
+                .padding(horizontal = spacing.pageHorizontal, vertical = spacing.itemGap / 4)
+                .clip(shape)
+                .clickable(onClick = onClick),
+        ) {
+            Row(
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = spacing.inlineGap / 2),
-            )
+                    .fillMaxWidth()
+                    .heightIn(min = rowMinHeight)
+                    .padding(horizontal = spacing.inlineGap, vertical = 0.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) { icon() }
+                Spacer(Modifier.width(spacing.itemGap))
+                Box(Modifier.weight(1f)) { label() }
+            }
         }
     }
-}
-
-@Composable
-private fun NavigationLeadingIndicator(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .width(3.dp)
-            .height(24.dp)
-            .clip(MaterialTheme.shapes.extraSmall)
-            .background(MaterialTheme.colorScheme.primary),
-    )
 }
 
 @Composable
@@ -356,19 +343,13 @@ private fun NotebookRow(
     onMenu: () -> Unit,
 ) {
     val spacing = LocalUiSpacing.current
-    val style = LocalUiStyle.current
-    val styleTokens = LocalUiStyleTokens.current
+    val rowMinHeight = drawerRowHeight()
     val shape = MaterialTheme.shapes.medium
 
     Surface(
         color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-        else MaterialTheme.colorScheme.surface,
+        else Color.Transparent,
         shape = shape,
-        border = if (style == UiStyle.FLUENT && styleTokens.cardBorderWidth > 0.dp) {
-            BorderStroke(styleTokens.cardBorderWidth, MaterialTheme.colorScheme.outlineVariant)
-        } else {
-            null
-        },
         shadowElevation = 0.dp,
         modifier = Modifier
             .fillMaxWidth()
@@ -376,59 +357,48 @@ private fun NotebookRow(
             .clip(shape)
             .clickable(onClick = onClick),
     ) {
-        Box(Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .padding(
-                        start = spacing.inlineGap + spacing.pageHorizontal * depth,
-                        end = spacing.inlineGap / 2,
-                        top = spacing.itemGap / 2,
-                        bottom = spacing.itemGap / 2,
-                    ),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (hasChildren) {
-                    IconButton(onClick = onToggleExpand, modifier = Modifier.size(24.dp)) {
-                        Icon(
-                            if (expanded) Icons.Rounded.KeyboardArrowDown else Icons.Rounded.KeyboardArrowRight,
-                            contentDescription = if (expanded) "收起子分类" else "展开子分类",
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                } else {
-                    Spacer(Modifier.width(24.dp))
-                }
-                Icon(
-                    if (selected) Icons.Outlined.FolderOpen else Icons.Outlined.Folder,
-                    contentDescription = null,
-                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.width(spacing.itemGap))
-                Text(
-                    notebook.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = onMenu, modifier = Modifier.size(30.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = rowMinHeight)
+                .padding(
+                    start = spacing.inlineGap + spacing.itemGap * depth,
+                    end = 2.dp,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (hasChildren) {
+                IconButton(onClick = onToggleExpand, modifier = Modifier.size(22.dp)) {
                     Icon(
-                        Icons.Rounded.MoreHoriz,
-                        contentDescription = "笔记本操作",
-                        modifier = Modifier.size(17.dp),
+                        if (expanded) Icons.Rounded.KeyboardArrowDown else Icons.Rounded.KeyboardArrowRight,
+                        contentDescription = if (expanded) "收起子分类" else "展开子分类",
+                        modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+            } else {
+                Spacer(Modifier.width(22.dp))
             }
-            if (selected && styleTokens.navigationLeadingIndicator) {
-                NavigationLeadingIndicator(
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(start = spacing.inlineGap / 2),
+            Icon(
+                if (selected) Icons.Outlined.FolderOpen else Icons.Outlined.Folder,
+                contentDescription = null,
+                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(17.dp),
+            )
+            Spacer(Modifier.width(spacing.inlineGap))
+            Text(
+                notebook.title,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = onMenu, modifier = Modifier.size(26.dp)) {
+                Icon(
+                    Icons.Rounded.MoreHoriz,
+                    contentDescription = "笔记本操作",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -452,7 +422,9 @@ fun flattenNotebooks(
         }
     }
     visit("", 0)
-    notebooks.filter { it.serverId !in visited }
+    // 收起父级时子级仍归属父级，不能作为孤儿提升到顶层；只兜底真正的孤儿节点。
+    val knownIds = notebooks.map { it.serverId }.toSet()
+    notebooks.filter { it.serverId !in visited && it.parentServerId !in knownIds }
         .sortedWith(compareBy({ it.seq }, { it.title }))
         .forEach { result.add(it to 0) }
     return result

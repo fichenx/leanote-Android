@@ -48,13 +48,12 @@ import com.leanote.next.data.repo.ImageRepository
 import com.leanote.next.ui.components.NoteMetaLine
 import com.leanote.next.ui.components.TagRow
 import com.leanote.next.ui.components.notePreview
+import com.leanote.next.ui.theme.LocalCardCorner
 import com.leanote.next.ui.theme.LocalNoteCardBorder
-import com.leanote.next.ui.theme.LocalNoteCardCorner
 import com.leanote.next.ui.theme.LocalSurfaceEffect
 import com.leanote.next.ui.theme.LocalSurfaceTranslucency
 import com.leanote.next.ui.theme.LocalUiDensity
 import com.leanote.next.ui.theme.LocalUiSpacing
-import com.leanote.next.ui.theme.LocalUiStyleTokens
 import com.leanote.next.ui.theme.cardColor
 import com.leanote.next.ui.theme.sheenBrush
 import dagger.hilt.android.EntryPointAccessors
@@ -83,18 +82,20 @@ fun NoteCard(
             ThumbnailEntryPoint::class.java,
         ).imageRepository()
     }
-    var thumbnail by remember(note.localId) { mutableStateOf<Any?>(null) }
+    var thumbnails by remember(note.localId) { mutableStateOf<List<Any>>(emptyList()) }
+    var thumbIndex by remember(note.localId) { mutableStateOf(0) }
 
     LaunchedEffect(note.localId, note.content, account?.id) {
-        thumbnail = runCatching { images.thumbnailModel(note.content, account) }.getOrNull()
+        thumbnails = runCatching { images.thumbnailModels(note.content, account) }
+            .getOrDefault(emptyList())
+        thumbIndex = 0
     }
 
     val effect = LocalSurfaceEffect.current
     val translucency = LocalSurfaceTranslucency.current
     val density = LocalUiDensity.current
     val spacing = LocalUiSpacing.current
-    val styleTokens = LocalUiStyleTokens.current
-    val cardShape = RoundedCornerShape(LocalNoteCardCorner.current.dp)
+    val cardShape = RoundedCornerShape(LocalCardCorner.current.dp)
     val showBorder = LocalNoteCardBorder.current
     val container = if (selected) {
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
@@ -119,12 +120,18 @@ fun NoteCard(
         UiDensity.STANDARD -> 2
         UiDensity.COMFORTABLE -> 3
     }
+    val thumbnailSize = when (density) {
+        UiDensity.COMPACT -> 46.dp
+        UiDensity.STANDARD -> 54.dp
+        UiDensity.COMFORTABLE -> 62.dp
+    }
+    val thumbnailModel = thumbnails.getOrNull(thumbIndex)
 
     Box(modifier) {
         Surface(
             color = container,
             shape = cardShape,
-            shadowElevation = if (selected) 0.dp else styleTokens.cardShadowElevation,
+            shadowElevation = if (selected) 0.dp else 1.dp,
             border = border,
             modifier = Modifier
                 .fillMaxWidth()
@@ -152,7 +159,7 @@ fun NoteCard(
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            Spacer(Modifier.height(5.dp))
+                            Spacer(Modifier.height(spacing.itemGap / 2))
                             Text(
                                 text = notePreview(note),
                                 style = MaterialTheme.typography.bodySmall,
@@ -202,14 +209,18 @@ fun NoteCard(
                                 }
                             }
                             }
-                            if (thumbnail != null) {
+                            if (thumbnailModel != null) {
                                 Spacer(Modifier.height(2.dp))
                                 AsyncImage(
-                                    model = thumbnail,
+                                    model = thumbnailModel,
                                     contentDescription = null,
+                                    onError = {
+                                        // 图片损坏或地址失效时自动尝试下一张。
+                                        thumbIndex += 1
+                                    },
                                     modifier = Modifier
                                         .padding(end = 4.dp)
-                                        .size(64.dp)
+                                        .size(thumbnailSize)
                                         .clip(MaterialTheme.shapes.medium)
                                         .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                                     contentScale = ContentScale.Crop,
@@ -218,7 +229,7 @@ fun NoteCard(
                         }
                     }
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(spacing.itemGap))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         NoteMetaLine(note, notebookName)
                         Spacer(Modifier.weight(1f))
@@ -261,7 +272,7 @@ fun NoteCard(
                     }
 
                     if (note.tagList.isNotEmpty()) {
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(spacing.itemGap + 2.dp))
                         TagRow(note.tagList.reversed(), max = 3)
                     }
                 }

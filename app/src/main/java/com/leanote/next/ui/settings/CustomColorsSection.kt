@@ -1,6 +1,5 @@
 package com.leanote.next.ui.settings
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -53,8 +53,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.leanote.next.ui.theme.ColorRole
 import com.leanote.next.ui.theme.ColorRoles
+import com.leanote.next.ui.theme.LocalCardCorner
 import com.leanote.next.ui.theme.LocalUiSpacing
-import com.leanote.next.ui.theme.LocalUiStyleTokens
 import com.leanote.next.ui.theme.colorForRole
 import com.leanote.next.ui.theme.parseHexColor
 
@@ -87,15 +87,11 @@ fun CustomColorsSection(
     // 默认收起，避免设置页一进来就被十几个颜色项占满。
     var expanded by rememberSaveable { mutableStateOf(false) }
     val spacing = LocalUiSpacing.current
-    val styleTokens = LocalUiStyleTokens.current
 
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        shape = MaterialTheme.shapes.large,
-        shadowElevation = styleTokens.cardShadowElevation,
-        border = styleTokens.cardBorderWidth.takeIf { it > 0.dp }?.let {
-            BorderStroke(it, MaterialTheme.colorScheme.outlineVariant)
-        },
+        shape = RoundedCornerShape(LocalCardCorner.current.dp),
+        shadowElevation = 1.dp,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(

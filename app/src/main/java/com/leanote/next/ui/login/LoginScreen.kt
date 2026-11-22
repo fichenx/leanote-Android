@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -80,7 +81,7 @@ import coil.compose.AsyncImage
 import com.leanote.next.ui.components.AccountAvatar
 import com.leanote.next.ui.components.LeanoteMark
 import com.leanote.next.ui.theme.LocalUiSpacing
-import com.leanote.next.ui.theme.LocalUiStyleTokens
+import com.leanote.next.ui.theme.LocalCardCorner
 import com.leanote.next.util.TimeUtils
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -110,7 +111,6 @@ fun LoginScreen(
     } else {
         MaterialTheme.colorScheme.onPrimary
     }
-    val styleTokens = LocalUiStyleTokens.current
 
     Box(
         modifier = Modifier
@@ -183,16 +183,8 @@ fun LoginScreen(
 
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-                elevation = CardDefaults.cardElevation(defaultElevation = styleTokens.cardShadowElevation),
-                shape = MaterialTheme.shapes.extraLarge,
-                border = if (styleTokens.cardBorderWidth > 0.dp) {
-                    androidx.compose.foundation.BorderStroke(
-                        styleTokens.cardBorderWidth,
-                        MaterialTheme.colorScheme.outlineVariant,
-                    )
-                } else {
-                    null
-                },
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                shape = RoundedCornerShape(LocalCardCorner.current.dp),
             ) {
                 Column(
                     Modifier.padding(
@@ -338,7 +330,7 @@ fun LoginScreen(
                 Spacer(Modifier.height(spacing.itemGap))
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-                    shape = MaterialTheme.shapes.large,
+                    shape = RoundedCornerShape(LocalCardCorner.current.dp),
                 ) {
                     Column {
                         state.accounts.forEachIndexed { index, account ->

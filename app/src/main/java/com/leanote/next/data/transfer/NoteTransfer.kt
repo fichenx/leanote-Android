@@ -501,9 +501,6 @@ class NoteTransfer @Inject constructor(
         dto.noteCardBorder?.let { settingsStore.setNoteCardBorder(it) }
         dto.noteCardCorner?.let { settingsStore.setNoteCardCorner(it.coerceIn(0, 28)) }
         dto.uiScale?.let { settingsStore.setUiScale(it.coerceIn(85, 130)) }
-        dto.uiStyle?.let { value ->
-            settingsStore.setUiStyle(enumValueOr(value, current.uiStyle))
-        }
         settingsStore.setAutoSync(dto.autoSync)
         settingsStore.setSortMode(enumValueOr(dto.sortMode, SortMode.UPDATED_DESC))
         settingsStore.setDefaultMarkdown(dto.defaultMarkdown)
@@ -546,7 +543,6 @@ class NoteTransfer @Inject constructor(
         noteCardBorder = noteCardBorder,
         noteCardCorner = noteCardCorner,
         uiScale = uiScale,
-        uiStyle = uiStyle.name,
         autoSync = autoSync,
         sortMode = sortMode.name,
         defaultMarkdown = defaultMarkdown,
@@ -642,7 +638,6 @@ private data class SettingsBackupDto(
     val noteCardBorder: Boolean? = null,
     val noteCardCorner: Int? = null,
     val uiScale: Int? = null,
-    val uiStyle: String? = null,
     val autoSync: Boolean = true,
     val sortMode: String = "UPDATED_DESC",
     val defaultMarkdown: Boolean = true,

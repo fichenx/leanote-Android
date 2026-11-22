@@ -63,9 +63,6 @@ enum class SurfaceEffect { NONE, FROSTED, ACRYLIC }
 /** 应用内页面的紧凑程度。 */
 enum class UiDensity { COMPACT, STANDARD, COMFORTABLE }
 
-/** 应用内界面的视觉与交互风格。 */
-enum class UiStyle { MATERIAL, MIUIX, CUPERTINO, FLUENT }
-
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val palette: ThemePalette = ThemePalette.FOREST,
@@ -77,8 +74,7 @@ data class AppSettings(
     val density: UiDensity = UiDensity.STANDARD,
     /** 应用内界面和文字缩放百分比。 */
     val uiScale: Int = 100,
-    val uiStyle: UiStyle = UiStyle.MATERIAL,
-    /** 笔记卡片独立圆角，单位 dp。 */
+    /** 全局卡片圆角，单位 dp。 */
     val noteCardCorner: Int = 22,
     /** 笔记卡片是否显示边框，颜色跟随自定义配色中的「边框」。 */
     val noteCardBorder: Boolean = true,

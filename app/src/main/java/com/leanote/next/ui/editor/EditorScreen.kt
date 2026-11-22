@@ -3,7 +3,6 @@ package com.leanote.next.ui.editor
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -106,7 +105,6 @@ import com.leanote.next.ui.components.ConfirmDialog
 import com.leanote.next.ui.components.LeanoteTopAppBar
 import com.leanote.next.ui.components.LoadingBox
 import com.leanote.next.ui.theme.LocalUiSpacing
-import com.leanote.next.ui.theme.LocalUiStyleTokens
 import com.leanote.next.ui.theme.MonoFont
 import com.leanote.next.ui.web.MarkdownContent
 import dagger.hilt.android.EntryPointAccessors
@@ -621,16 +619,10 @@ private fun EditorToolbar(
     onTogglePreview: () -> Unit,
 ) {
     val spacing = LocalUiSpacing.current
-    val styleTokens = LocalUiStyleTokens.current
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 2.dp,
-        shadowElevation = styleTokens.cardShadowElevation,
-        border = if (styleTokens.cardBorderWidth > 0.dp) {
-            BorderStroke(styleTokens.cardBorderWidth, MaterialTheme.colorScheme.outlineVariant)
-        } else {
-            null
-        },
+        shadowElevation = 1.dp,
     ) {
         if (previewMode) {
             Row(
