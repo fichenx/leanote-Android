@@ -756,6 +756,7 @@ fun HomeScreen(
                                         com.leanote.next.data.transfer.ExportFormat.MARKDOWN -> "每篇笔记一个 .md 文件，富文本导出为 .html"
                                         com.leanote.next.data.transfer.ExportFormat.HTML -> "每篇笔记一个独立网页，可用浏览器打开"
                                         com.leanote.next.data.transfer.ExportFormat.ENEX -> "合并为一个 .enex，可导入 Evernote / 桌面版"
+                                        com.leanote.next.data.transfer.ExportFormat.LEANOTE -> "合并为一个 .leanote，蚂蚁笔记专用格式，可在电脑版/网页版恢复"
                                     },
                                 )
                             },

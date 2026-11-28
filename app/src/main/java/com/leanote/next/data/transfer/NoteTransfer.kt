@@ -4,7 +4,9 @@ import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
+import android.util.Base64
 import android.util.Xml
+import android.webkit.MimeTypeMap
 import com.leanote.next.data.local.ImageDao
 import com.leanote.next.data.local.NoteDao
 import com.leanote.next.data.local.NoteEntity
@@ -25,6 +27,17 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import org.xmlpull.v1.XmlPullParser
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
@@ -48,6 +61,7 @@ enum class ExportFormat(val label: String, val extension: String) {
     MARKDOWN("Markdown", "md"),
     HTML("HTML", "html"),
     ENEX("Evernote ENEX", "enex"),
+    LEANOTE("蚂蚁笔记", "leanote"),
 }
 
 @Singleton
@@ -86,6 +100,17 @@ class NoteTransfer @Inject constructor(
                         usedNames = usedNames,
                     )
                     if (writeTextDocument(targetDir, "application/xml", name, buildEnex(notes))) {
+                        exported = notes.size
+                    }
+                }
+
+                ExportFormat.LEANOTE -> {
+                    val name = uniqueFileName(
+                        base = "leanote_notes_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date()),
+                        extension = ExportFormat.LEANOTE.extension,
+                        usedNames = usedNames,
+                    )
+                    if (writeTextDocument(targetDir, "application/json", name, buildLeanoteExport(notes))) {
                         exported = notes.size
                     }
                 }
@@ -174,6 +199,21 @@ class NoteTransfer @Inject constructor(
                                         tags = note.tags.joinToString(","),
                                     )
                                     imported++
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    errors.add("$displayName 第 ${index + 1} 篇：${e.readableMessage("写入失败")}")
+                                }
+                            }
+                        }
+
+                        "leanote" -> {
+                            val root = Json.parseToJsonElement(text).jsonObject
+                            val noteArray = root["notes"]?.jsonArray ?: JsonArray(emptyList())
+                            if (noteArray.isEmpty()) errors.add("$displayName：未找到笔记")
+                            noteArray.forEachIndexed { index, element ->
+                                try {
+                                    imported += importLeanoteNote(account.id, targetNotebook, element.jsonObject)
                                 } catch (e: CancellationException) {
                                     throw e
                                 } catch (e: Exception) {
@@ -378,8 +418,140 @@ class NoteTransfer @Inject constructor(
         )
     }
 
-    private fun existingDisplayNames(treeUri: Uri): MutableSet<String> {
-        val result = mutableSetOf<String>()
+    /** 蚂蚁笔记专用格式(.leanote): 与服务端/桌面版一致, 含全部正文与图片 base64 */
+    private suspend fun buildLeanoteExport(notes: List<NoteEntity>): String {
+        val noteObjects = mutableListOf<JsonObject>()
+        notes.forEach { note ->
+            var content = note.content
+            val fileObjects = mutableListOf<JsonObject>()
+            imageDao.listOfNote(note.localId).forEach { image ->
+                val source = File(image.localPath)
+                if (!source.isFile) return@forEach
+                val fileId = UUID.randomUUID().toString().replace("-", "").take(24)
+                content = content.replace(
+                    "file:/getImage?id=${image.localId}",
+                    "leanote://file/getImage?fileId=$fileId",
+                )
+                val serverId = image.serverId
+                if (!serverId.isNullOrBlank()) {
+                    val remote = Regex(
+                        """https?://[^"'\s()<>]+/api/file/getImage\?fileId=$serverId(?:&token=[^"'\s()<>]*)?""",
+                    )
+                    content = remote.replace(content, "leanote://file/getImage?fileId=$fileId")
+                }
+                val extension = source.extension.ifBlank { "jpg" }
+                fileObjects.add(
+                    buildJsonObject {
+                        put("fileId", fileId)
+                        put("base64", Base64.encodeToString(source.readBytes(), Base64.NO_WRAP))
+                        put("md5", "")
+                        put("type", extension)
+                        put("title", source.name)
+                        put("isAttach", false)
+                        put("createdTime", formatLeanoteTime(note.createdTime))
+                    },
+                )
+            }
+            noteObjects.add(
+                buildJsonObject {
+                    put("title", note.title)
+                    put("content", content)
+                    put("tags", JsonArray(note.tagList.map { JsonPrimitive(it) }))
+                    put("isMarkdown", note.isMarkdown)
+                    put("createdTime", formatLeanoteTime(note.createdTime))
+                    put("updatedTime", formatLeanoteTime(note.updatedTime))
+                    put("files", JsonArray(fileObjects))
+                },
+            )
+        }
+        return buildJsonObject {
+            put("exportDate", formatLeanoteTime(System.currentTimeMillis()))
+            put("app", "leanote.android")
+            put("apiVersion", "0.1")
+            put("notes", JsonArray(noteObjects))
+        }.toString()
+    }
+
+    /** 导入 .leanote 单篇笔记, 图片落盘并改写为本地引用 */
+    private suspend fun importLeanoteNote(accountId: String, notebookId: String, obj: JsonObject): Int {
+        data class PendingImage(val fileId: String, val localId: String, val path: String, val mime: String)
+
+        var content = obj["content"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        val title = obj["title"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        val markdown = obj["isMarkdown"]?.jsonPrimitive?.booleanOrNull ?: false
+        val tags = obj["tags"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull }.orEmpty()
+        val createdTime = parseLeanoteTime(obj["createdTime"]?.jsonPrimitive?.contentOrNull)
+        val updatedTime = parseLeanoteTime(obj["updatedTime"]?.jsonPrimitive?.contentOrNull)
+
+        val pending = mutableListOf<PendingImage>()
+        obj["files"]?.jsonArray?.forEach { element ->
+            val file = element.jsonObject
+            val fileId = file["fileId"]?.jsonPrimitive?.contentOrNull ?: return@forEach
+            val base64 = file["base64"]?.jsonPrimitive?.contentOrNull ?: return@forEach
+            if (file["isAttach"]?.jsonPrimitive?.booleanOrNull == true) return@forEach
+            val bytes = runCatching { Base64.decode(base64, Base64.DEFAULT) }.getOrNull() ?: return@forEach
+            val extension = file["type"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                .trimStart('.').ifBlank { "jpg" }
+            val localId = UUID.randomUUID().toString().replace("-", "")
+            val target = File(imageDir, "$localId.$extension")
+            try {
+                target.outputStream().use { it.write(bytes) }
+            } catch (e: Exception) {
+                return@forEach
+            }
+            val mime = MimeTypeMap.getSingleton()
+                .getMimeTypeFromExtension(extension.lowercase(Locale.ROOT)) ?: "image/jpeg"
+            pending.add(PendingImage(fileId, localId, target.absolutePath, mime))
+        }
+
+        pending.forEach { image ->
+            content = content.replace(
+                "leanote://file/getImage?fileId=${image.fileId}",
+                "file:/getImage?id=${image.localId}",
+            )
+        }
+
+        val now = System.currentTimeMillis()
+        val noteLocalId = noteDao.insert(
+            NoteEntity(
+                accountId = accountId,
+                notebookServerId = notebookId,
+                title = title.ifBlank { "无标题笔记" },
+                content = content,
+                isMarkdown = markdown,
+                tags = tags.joinToString(","),
+                createdTime = if (createdTime > 0) createdTime else now,
+                updatedTime = if (updatedTime > 0) updatedTime else now,
+                isDirty = true,
+            ),
+        )
+        pending.forEach { image ->
+            imageDao.insert(
+                NoteImageEntity(
+                    localId = image.localId,
+                    noteLocalId = noteLocalId,
+                    serverId = null,
+                    localPath = image.path,
+                    mimeType = image.mime,
+                ),
+            )
+        }
+        return 1
+    }
+
+    private fun formatLeanoteTime(millis: Long): String =
+        SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(millis))
+
+    private fun parseLeanoteTime(raw: String?): Long {
+        if (raw.isNullOrBlank()) return 0L
+        runCatching { return Instant.parse(raw).toEpochMilli() }
+        runCatching {
+            return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).parse(raw)?.time ?: 0L
+        }
+        return 0L
+    }
+
+    private fun existingDisplayNames(treeUri: Uri): MutableSet<String> {        val result = mutableSetOf<String>()
         runCatching {
             val children = DocumentsContract.buildChildDocumentsUriUsingTree(
                 treeUri,
@@ -577,7 +749,7 @@ class NoteTransfer @Inject constructor(
     )
 }
 
-private val SUPPORTED_IMPORT_EXTENSIONS = setOf("md", "markdown", "txt", "html", "htm", "enex")
+private val SUPPORTED_IMPORT_EXTENSIONS = setOf("md", "markdown", "txt", "html", "htm", "enex", "leanote")
 private val ENEX_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'", Locale.US)
     .withZone(ZoneOffset.UTC)
 private val INVALID_XML_CONTROLS = Regex("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]")

@@ -169,7 +169,7 @@ fun DataTransferScreen(
             item {
                 TransferCard {
                     TransferDescription(
-                        "支持 .md、.markdown、.txt、.html、.htm 和 Evernote .enex。文件将导入当前账户的第一个顶层笔记本，并标记为待同步。",
+                        "支持 .md、.markdown、.txt、.html、.htm、Evernote .enex 和蚂蚁笔记 .leanote。文件将导入当前账户的第一个顶层笔记本，并标记为待同步。",
                     )
                     Spacer(Modifier.height(spacing.contentVertical))
                     Button(
@@ -217,6 +217,7 @@ fun DataTransferScreen(
                             ExportFormat.MARKDOWN -> "Markdown 笔记保存为 .md，富文本笔记保存为完整 .html 文档。"
                             ExportFormat.HTML -> "全部保存为完整 .html 文档，Markdown 源文保留在 pre 元素中。"
                             ExportFormat.ENEX -> "全部笔记合并为一个 .enex 文件，包含标签、创建时间和更新时间。"
+                            ExportFormat.LEANOTE -> "全部笔记合并为一个 .leanote 文件（蚂蚁笔记专用格式），包含正文、标签、时间和图片，可在电脑版/网页版恢复。"
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
